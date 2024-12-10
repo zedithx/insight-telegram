@@ -3,12 +3,12 @@
  * Add your service key to the current folder.
  * Uncomment and fill in these variables.
  */
-// const projectId = 'my-project';
-// const locationId = 'global';
-// const agentId = 'my-agent';
-// const languageCode = 'en'
-// const TELEGRAM_TOKEN='1234567898:ABCdfghTtaD8dfghdfgh45sdf65467M';
-// const SERVER_URL='https://example.com';
+const projectId = '';
+const locationId = '';
+const agentId = '';
+const languageCode = 'en'
+const TELEGRAM_TOKEN='';
+const SERVER_URL='';
 
 const structProtoToJson =
     require('../../botlib/proto_to_json.js').structProtoToJson;
@@ -41,7 +41,7 @@ function telegramToDetectIntent(telegramRequest, sessionPath) {
     session: sessionPath,
     queryInput: {
       text: {
-        text: telegramRequest.message.text,
+        text: telegramRequest.message.chat.id + ":" + telegramRequest.message.text
       },
       languageCode,
     }
@@ -107,25 +107,48 @@ const setup = async () => {
   console.log(res.data);
 };
 
+const sendTypingAction = async (chatId) => {
+  try {
+    await axios.post(`${API_URL}/sendChatAction`, {
+      chat_id: chatId,
+      action: 'typing', // Typing action
+    });
+  } catch (error) {
+    console.error('Error sending typing action:', error.message);
+  }
+};
+
 app.post(URI, async (req, res) => {
   const chatId = req.body.message.chat.id;
-  const response = await detectIntentResponse(req.body);
-  const requests = await convertToTelegramMessage(response, chatId);
 
-  for (request of requests) {
-    if (request.hasOwnProperty('photo')) {
-      await axios.post(`${API_URL}/sendPhoto`, request).catch(function(error) {
-        console.log(error)
-      })
-    } else if (request.hasOwnProperty('voice')) {
-      await axios.post(`${API_URL}/sendVoice`, request).catch(function(error) {
-        console.log(error)
-      })
-    } else {
-      await axios.post(`${API_URL}/sendMessage`, request).catch(function(error) {
-        console.log(error)
-      })
+  try {
+    // Start typing action
+    await sendTypingAction(chatId);
+
+    // Call detectIntentResponse to get the response from Dialogflow
+    const response = await detectIntentResponse(req.body);
+
+    // Convert Dialogflow response to Telegram messages
+    const requests = await convertToTelegramMessage(response, chatId);
+
+    // Loop through each message and send it
+    for (const request of requests) {
+      if (request.hasOwnProperty('photo')) {
+        await axios.post(`${API_URL}/sendPhoto`, request).catch(function(error) {
+          console.error(error);
+        });
+      } else if (request.hasOwnProperty('voice')) {
+        await axios.post(`${API_URL}/sendVoice`, request).catch(function(error) {
+          console.error(error);
+        });
+      } else {
+        await axios.post(`${API_URL}/sendMessage`, request).catch(function(error) {
+          console.error(error);
+        });
+      }
     }
+  } catch (error) {
+    console.error('Error handling webhook:', error.message);
   }
 
   return res.send();
