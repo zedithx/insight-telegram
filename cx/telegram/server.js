@@ -3,13 +3,13 @@
  * Add your service key to the current folder.
  * Uncomment and fill in these variables.
  */
-const projectId = '';
-const locationId = '';
-const agentId = '';
-const languageCode = 'en'
-const TELEGRAM_TOKEN='';
-const SERVER_URL='';
-const API_KEY = '';
+// const projectId = '';
+// const locationId = '';
+// const agentId = '';
+// const languageCode = 'en'
+// const TELEGRAM_TOKEN='';
+// const SERVER_URL=''
+// const API_KEY = '';
 
 const structProtoToJson =
     require('../../botlib/proto_to_json.js').structProtoToJson;
@@ -131,30 +131,43 @@ async function handleRegistration(chatId, messageText) {
   const state = userStates[chatId];
 
   switch (state.step) {
-    case 1: // Step 1: Ask for name
+    case 1: // Step 2: Get email
       state.step++;
       state.data.name = messageText; // Save the name
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Nice to meet you! What's your favorite color?",
+        text: `Nice to meet you, ${messageText}! What's your email?`,
       });
       break;
 
-    case 2: // Step 2: Ask for favorite color
+    case 2: // Step 3: Get contact number
       state.step++;
-      state.data.color = messageText; // Save the favorite color
+      state.data.email = messageText; // Save the email
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "Great choice! Finally, what's your hobby?",
       });
       break;
 
-    case 3: // Step 3: Ask for hobby
+    case 3: // Step 3: Prospective student, parent or other?
       state.step++;
-      state.data.hobby = messageText; // Save the hobby
+      state.data.contactNumber = messageText; // Save the contact number
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Great choice! Finally, which of the following are you?",
+      });
+      break;
 
+    case 4:
+      state.step++;
+      state.data.audienceType = messageText; // Save the audienceType
+      //  Respond first due to long wait time
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Generating a personalised card for you. Please wait patiently...",
+      });
       // Generate the card using DALL-E
-      const cardDescription = `A personalized card with the user's name "${state.data.name}", favorite color "${state.data.color}", and hobby "${state.data.hobby}" in an artistic design.`;
+      const cardDescription = `A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be "${state.data.audienceType}" in a retro game design.`;
       const dalleImageResponse = await generateCardImage(cardDescription);
 
       if (dalleImageResponse && dalleImageResponse.data && dalleImageResponse.data[0]) {
@@ -176,18 +189,14 @@ async function handleRegistration(chatId, messageText) {
       else {
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
-          text: "Oops, something went wrong while generating your card. Please try again later.",
+          text: "Oops, something went wrong while generating your card. Please try again later with /start.",
         });
       }
-
-      // Clear the user state after completion
-      delete userStates[chatId];
-      break;
 
     default:
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Something went wrong with your registration. Let's start over. What's your name?",
+        text: "Something went wrong with your registration. Please try again with /start",
       });
       delete userStates[chatId]; // Reset state
   }
@@ -218,13 +227,13 @@ app.post(URI, async (req, res) => {
 
   try {
     // Check if the user is in the registration flow
-    if (userStates[chatId]?.step != 4 || messageText === '/start') {
+    if (userStates[chatId]?.step != 5 || messageText === '/start') {
       if (messageText === '/start') {
         // Start the registration flow
         userStates[chatId] = { step: 1, data: {} };
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
-          text: "Welcome! Let's get started with registration. What's your name?",
+          text: "Welcome to the SUTD Open House AI Chatbot. To begin, please enter your name.",
         });
       } else {
         // Continue the registration flow
