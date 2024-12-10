@@ -9,6 +9,7 @@ const agentId = '';
 const languageCode = 'en'
 const TELEGRAM_TOKEN='';
 const SERVER_URL='';
+const API_KEY = '';
 
 const structProtoToJson =
     require('../../botlib/proto_to_json.js').structProtoToJson;
@@ -118,40 +119,137 @@ const sendTypingAction = async (chatId) => {
   }
 };
 
+const userStates = {}; // In-memory store for tracking user registration state
+
+// Function to handle registration flow
+async function handleRegistration(chatId, messageText) {
+  if (!userStates[chatId]) {
+    // Initialize registration state
+    userStates[chatId] = { step: 1, data: {} };
+  }
+
+  const state = userStates[chatId];
+
+  switch (state.step) {
+    case 1: // Step 1: Ask for name
+      state.step++;
+      state.data.name = messageText; // Save the name
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Nice to meet you! What's your favorite color?",
+      });
+      break;
+
+    case 2: // Step 2: Ask for favorite color
+      state.step++;
+      state.data.color = messageText; // Save the favorite color
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Great choice! Finally, what's your hobby?",
+      });
+      break;
+
+    case 3: // Step 3: Ask for hobby
+      state.step++;
+      state.data.hobby = messageText; // Save the hobby
+
+      // Generate the card using DALL-E
+      const cardDescription = `A personalized card with the user's name "${state.data.name}", favorite color "${state.data.color}", and hobby "${state.data.hobby}" in an artistic design.`;
+      const dalleImageResponse = await generateCardImage(cardDescription);
+
+      if (dalleImageResponse && dalleImageResponse.data && dalleImageResponse.data[0]) {
+        const imageUrl = dalleImageResponse.data[0].url; // Extract the image URL
+
+        try {
+          // Debug: Log the URL to ensure it's correctly extracted
+          console.log("Image URL to send:", imageUrl);
+
+          await axios.post(`${API_URL}/sendPhoto`, {
+            chat_id: chatId,
+            photo: imageUrl, // Use the URL as-is
+            caption: `Here's your personalized card, ${state.data.name}!`,
+          });
+        } catch (error) {
+          console.error('Error sending photo to Telegram:', error.response?.data || error.message);
+        }
+      }
+      else {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Oops, something went wrong while generating your card. Please try again later.",
+        });
+      }
+
+      // Clear the user state after completion
+      delete userStates[chatId];
+      break;
+
+    default:
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Something went wrong with your registration. Let's start over. What's your name?",
+      });
+      delete userStates[chatId]; // Reset state
+  }
+}
+
+// Function to generate the card using DALL-E
+async function generateCardImage(description) {
+  try {
+    const response = await axios.post('https://api.openai.com/v1/images/generations', {
+      prompt: description,
+      size: "1024x1024",
+      n: 1,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`, // Replace with your OpenAI API key
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error generating DALL-E image:', error.message);
+    return null;
+  }
+}
+
 app.post(URI, async (req, res) => {
   const chatId = req.body.message.chat.id;
+  const messageText = req.body.message.text;
 
   try {
-    // Start typing action
-    await sendTypingAction(chatId);
-
-    // Call detectIntentResponse to get the response from Dialogflow
-    const response = await detectIntentResponse(req.body);
-
-    // Convert Dialogflow response to Telegram messages
-    const requests = await convertToTelegramMessage(response, chatId);
-
-    // Loop through each message and send it
-    for (const request of requests) {
-      if (request.hasOwnProperty('photo')) {
-        await axios.post(`${API_URL}/sendPhoto`, request).catch(function(error) {
-          console.error(error);
-        });
-      } else if (request.hasOwnProperty('voice')) {
-        await axios.post(`${API_URL}/sendVoice`, request).catch(function(error) {
-          console.error(error);
+    // Check if the user is in the registration flow
+    if (userStates[chatId]?.step != 4 || messageText === '/start') {
+      if (messageText === '/start') {
+        // Start the registration flow
+        userStates[chatId] = { step: 1, data: {} };
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Welcome! Let's get started with registration. What's your name?",
         });
       } else {
-        await axios.post(`${API_URL}/sendMessage`, request).catch(function(error) {
-          console.error(error);
-        });
+        // Continue the registration flow
+        await handleRegistration(chatId, messageText);
+      }
+    } else {
+      // Proceed with Dialogflow interaction if not in registration flow
+      const response = await detectIntentResponse(req.body);
+      const requests = await convertToTelegramMessage(response, chatId);
+
+      for (const request of requests) {
+        if (request.hasOwnProperty('photo')) {
+          await axios.post(`${API_URL}/sendPhoto`, request).catch((error) => console.error(error));
+        } else if (request.hasOwnProperty('voice')) {
+          await axios.post(`${API_URL}/sendVoice`, request).catch((error) => console.error(error));
+        } else {
+          await axios.post(`${API_URL}/sendMessage`, request).catch((error) => console.error(error));
+        }
       }
     }
   } catch (error) {
     console.error('Error handling webhook:', error.message);
   }
 
-  return res.send();
+  res.send();
 });
 
 const listener = app.listen(process.env.PORT, async () => {
