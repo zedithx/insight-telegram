@@ -145,7 +145,7 @@ async function handleRegistration(chatId, messageText) {
       state.data.email = messageText; // Save the email
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Great choice! Finally, what's your hobby?",
+        text: "Thank you. Next, what is your phone number?",
       });
       break;
 
@@ -154,44 +154,110 @@ async function handleRegistration(chatId, messageText) {
       state.data.contactNumber = messageText; // Save the contact number
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Great choice! Finally, which of the following are you?",
-      });
+        text: "Awesome! Now, which of the following are you? \n" +
+            "1. Prospective student\n" +
+            "2. Parent\n" +
+            "3. Others",
+        reply_markup: {
+      keyboard: [
+        [{ text: "Student" }],
+        [{ text: "Parent" }],
+        [{ text: "Others" }]
+      ],
+      one_time_keyboard: true, // The keyboard disappears after selection
+      resize_keyboard: true // Resizes the keyboard for a better UI
+      }});
       break;
 
     case 4:
+      state.step++;
+      state.data.groupType = messageText; // Save the group type
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Wonderful to have you here at the SUTD Open House 2025. Before we proceed," +
+            "Is there any course of study that you are particularly interested in?\n" +
+            "1. Computer Science and Design (CSD)\n" +
+            "2. Architecture and Sustainable Design (ASD)\n" +
+            "3. Engineering Systems and Design (ESD)\n" +
+            "4. Engineering Product Development (EPD)\n" +
+            "5. Design and Artificial Intelligence (DAI)\n" +
+            "6. None"
+        ,
+        reply_markup: {
+      keyboard: [
+        [{ text: "CSD" }],
+        [{ text: "ASD" }],
+        [{ text: "ESD" }],
+        [{ text: "EPD" }],
+        [{ text: "DAI" }],
+        [{ text: "None" }]
+      ],
+      one_time_keyboard: true, // The keyboard disappears after selection
+      resize_keyboard: true // Resizes the keyboard for a better UI
+      }});
+      break;
+
+    case 5:
+      state.step++;
+      state.data.pillar = messageText; // Save the contact number
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Please review your details carefully before submitting. " +
+            "By clicking ‘Yes,’ you consent to your data being used for event" +
+            " purposes. Be assured that you will not be contacted unless you have expressed your" +
+            "interest. \n\n" +
+        "Name: " + state.data.name + "\n" +
+        "Email Address: " + state.data.email + "\n" +
+        "Contact Number: " + state.data.contactNumber + "\n" +
+        "Group Type: " + state.data.groupType + "\n" +
+        "Pillar of Interest: " + state.data.pillar ,
+        reply_markup: {
+      keyboard: [
+        [{ text: "Yes" }],
+        [{ text: "No" }],
+      ],
+      one_time_keyboard: true, // The keyboard disappears after selection
+      resize_keyboard: true // Resizes the keyboard for a better UI
+      }});
+      break;
+
+
+    case 6:
       state.step++;
       state.data.audienceType = messageText; // Save the audienceType
       //  Respond first due to long wait time
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Generating a personalised card for you. Please wait patiently...",
+        text: "Generating a personalised card for you and saving your data. Please wait patiently...",
       });
       // Generate the card using DALL-E
-      const cardDescription = `A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be "${state.data.audienceType}" in a retro game design.`;
-      const dalleImageResponse = await generateCardImage(cardDescription);
-
-      if (dalleImageResponse && dalleImageResponse.data && dalleImageResponse.data[0]) {
-        const imageUrl = dalleImageResponse.data[0].url; // Extract the image URL
-
-        try {
-          // Debug: Log the URL to ensure it's correctly extracted
-          console.log("Image URL to send:", imageUrl);
-
-          await axios.post(`${API_URL}/sendPhoto`, {
-            chat_id: chatId,
-            photo: imageUrl, // Use the URL as-is
-            caption: `Here's your personalized card, ${state.data.name}!`,
-          });
-        } catch (error) {
-          console.error('Error sending photo to Telegram:', error.response?.data || error.message);
-        }
-      }
-      else {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Oops, something went wrong while generating your card. Please try again later with /start.",
-        });
-      }
+      // const cardDescription = `A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be a "${state.data.audienceType}" in a retro game design.`;
+      // const dalleImageResponse = await generateCardImage(cardDescription);
+      //
+      // if (dalleImageResponse && dalleImageResponse.data && dalleImageResponse.data[0]) {
+      //   const imageUrl = dalleImageResponse.data[0].url; // Extract the image URL
+      //
+      //   try {
+      //     // Debug: Log the URL to ensure it's correctly extracted
+      //     console.log("Image URL to send:", imageUrl);
+      //
+      //     await axios.post(`${API_URL}/sendPhoto`, {
+      //       chat_id: chatId,
+      //       photo: imageUrl, // Use the URL as-is
+      //       caption: `Here's your personalized card, ${state.data.name}!`,
+      //     });
+      //   } catch (error) {
+      //     console.error('Error sending photo to Telegram:', error.response?.data || error.message);
+      //   }
+      // }
+      // else {
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+        text: "Here will be generating of the card but disabled to avoid expenses"
+        // text: "Oops, something went wrong while generating your card. Please try again later with /start.",
+      });
+      // }
+      break;
 
     default:
       await axios.post(`${API_URL}/sendMessage`, {
