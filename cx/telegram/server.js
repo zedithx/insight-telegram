@@ -136,7 +136,9 @@ async function handleRegistration(chatId, messageText) {
       state.data.name = messageText; // Save the name
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: `Nice to meet you, ${messageText}! What's your email?`,
+        text: `Nice to meet you, **${messageText}**! 🤝\n
+        Can I grab your email so I can share updates and help you even after the Open House? 📧`,
+        parse_mode: "Markdown" // Enables bold and clean formatting
       });
       break;
 
@@ -145,7 +147,9 @@ async function handleRegistration(chatId, messageText) {
       state.data.email = messageText; // Save the email
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Thank you. Next, what is your phone number?",
+        text: "Thanks a bunch! 🙌 Just one more thing – could you share your phone number? " +
+            "In case we need to contact you after Open House! 📱",
+        parse_mode: "Markdown" // Enables bold and clean formatting
       });
       break;
 
@@ -154,13 +158,14 @@ async function handleRegistration(chatId, messageText) {
       state.data.contactNumber = messageText; // Save the contact number
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Awesome! Now, which of the following are you? \n" +
-            "1. Prospective student\n" +
-            "2. Parent\n" +
-            "3. Others",
+        text: "Awesome! 🚀 Before we dive in, I’d love to know – which best describes you? \n" +
+            "1. **Prospective Student** 🎓\n" +
+            "2. **Parent** 🧑‍🤝‍🧑\n" +
+            "3. **Other** 🌟",
+        parse_mode: "Markdown", // Enables bold and clean formatting
         reply_markup: {
       keyboard: [
-        [{ text: "Student" }],
+        [{ text: "Prospective Student" }],
         [{ text: "Parent" }],
         [{ text: "Others" }]
       ],
@@ -174,15 +179,15 @@ async function handleRegistration(chatId, messageText) {
       state.data.groupType = messageText; // Save the group type
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Wonderful to have you here at the SUTD Open House 2025. Before we proceed," +
-            "Is there any course of study that you are particularly interested in?\n" +
-            "1. Computer Science and Design (CSD)\n" +
-            "2. Architecture and Sustainable Design (ASD)\n" +
-            "3. Engineering Systems and Design (ESD)\n" +
-            "4. Engineering Product Development (EPD)\n" +
-            "5. Design and Artificial Intelligence (DAI)\n" +
-            "6. None"
-        ,
+        text: "🌟 **Wonderful to have you here at the SUTD Open House 2025!** 🌟\n\n" +
+        "Before we proceed, is there any course of study you are particularly interested in? 👇\n" +
+        "1️⃣ **Computer Science and Design (CSD)**\n" +
+        "2️⃣ **Architecture and Sustainable Design (ASD)**\n" +
+        "3️⃣ **Engineering Systems and Design (ESD)**\n" +
+        "4️⃣ **Engineering Product Development (EPD)**\n" +
+        "5️⃣ **Design and Artificial Intelligence (DAI)**\n" +
+        "6️⃣ **None**",
+        parse_mode: "Markdown", // Enables bold and clean formatting
         reply_markup: {
       keyboard: [
         [{ text: "CSD" }],
@@ -202,15 +207,15 @@ async function handleRegistration(chatId, messageText) {
       state.data.pillar = messageText; // Save the contact number
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Please review your details carefully before submitting. " +
-            "By clicking ‘Yes,’ you consent to your data being used for event" +
-            " purposes. Be assured that you will not be contacted unless you have expressed your" +
-            "interest. \n\n" +
-        "Name: " + state.data.name + "\n" +
-        "Email Address: " + state.data.email + "\n" +
-        "Contact Number: " + state.data.contactNumber + "\n" +
-        "Group Type: " + state.data.groupType + "\n" +
-        "Pillar of Interest: " + state.data.pillar ,
+        text: "✅ **Please review your details carefully before submitting.**\n\n" +
+          "By clicking ‘Yes,’ you consent to your data being used for event purposes. Be assured that you will not be contacted unless you have expressed your interest. 📢\n\n" +
+          "**Name:** " + state.data.name + "\n" +
+          "**Email Address:** " + state.data.email + "\n" +
+          "**Contact Number:** " + state.data.contactNumber + "\n" +
+          "**Group Type:** " + state.data.groupType + "\n" +
+          "**Pillar of Interest:** " + state.data.pillar + "\n\n" +
+          "If all looks good, please click ‘Yes’ to proceed! 😊",
+        parse_mode: "Markdown", // Enables bold and clean formatting
         reply_markup: {
       keyboard: [
         [{ text: "Yes" }],
@@ -229,6 +234,7 @@ async function handleRegistration(chatId, messageText) {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "Generating a personalised card for you and saving your data. Please wait patiently...",
+        parse_mode: "Markdown" // Enables bold and clean formatting
       });
       // Generate the card using DALL-E
       // const cardDescription = `A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be a "${state.data.audienceType}" in a retro game design.`;
@@ -253,7 +259,8 @@ async function handleRegistration(chatId, messageText) {
       // else {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Here will be generating of the card but disabled to avoid expenses"
+        text: "Here will be generating of the card but disabled to avoid expenses. I will explain here" +
+            "how to use the bot"
         // text: "Oops, something went wrong while generating your card. Please try again later with /start.",
       });
       // }
@@ -293,13 +300,15 @@ app.post(URI, async (req, res) => {
 
   try {
     // Check if the user is in the registration flow
-    if (userStates[chatId]?.step != 5 || messageText === '/start') {
+    if (userStates[chatId]?.step != 7 || messageText === '/start') {
       if (messageText === '/start') {
         // Start the registration flow
         userStates[chatId] = { step: 1, data: {} };
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
-          text: "Welcome to the SUTD Open House AI Chatbot. To begin, please enter your name.",
+          text: "🎉 **Welcome to the SUTD Open House!** 🎉\n" +
+              "I’m your friendly AI chatbot here to help you make the most of your day. Let’s get started! What’s your name? 😊",
+          parse_mode: "Markdown" // Enables bold and clean formatting
         });
       } else {
         // Continue the registration flow
