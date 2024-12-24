@@ -15,7 +15,8 @@
     "eslint-config-google": "^0.14.0",
     "express": "^4.17.1",
     "nodemon": "^2.0.7",
-    "request": "^2.88.0"
+    "request": "^2.88.0",
+    "form-data": "^4.0.1"
   },
   "engines": {
     "node": "8.x"

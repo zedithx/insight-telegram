@@ -42,7 +42,7 @@ function telegramToDetectIntent(telegramRequest, sessionPath) {
     session: sessionPath,
     queryInput: {
       text: {
-        text: telegramRequest.message.chat.id + ":" + telegramRequest.message.text
+        text: telegramRequest.message.chat.id + ": " + telegramRequest.message.text
       },
       languageCode,
     }
@@ -136,9 +136,9 @@ async function handleRegistration(chatId, messageText) {
       state.data.name = messageText; // Save the name
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: `Nice to meet you, **${messageText}**! 🤝\n
-        Can I grab your email so I can share updates and help you even after the Open House? 📧`,
-        parse_mode: "Markdown" // Enables bold and clean formatting
+        text: `Nice to meet you, <b>${messageText}</b>! 🤝\nCan I grab your email so I can share updates and 
+help you even after the Open House? 📧`,
+        parse_mode: "HTML" // Enables bold and clean formatting
       });
       break;
 
@@ -147,9 +147,9 @@ async function handleRegistration(chatId, messageText) {
       state.data.email = messageText; // Save the email
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Thanks a bunch! 🙌 Just one more thing – could you share your phone number? " +
+        text: "Thanks a bunch! 🙌 \nJust one more thing – could you share your phone number? " +
             "In case we need to contact you after Open House! 📱",
-        parse_mode: "Markdown" // Enables bold and clean formatting
+        parse_mode: "HTML" // Enables bold and clean formatting
       });
       break;
 
@@ -159,10 +159,10 @@ async function handleRegistration(chatId, messageText) {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "Awesome! 🚀 Before we dive in, I’d love to know – which best describes you? \n" +
-            "1. **Prospective Student** 🎓\n" +
-            "2. **Parent** 🧑‍🤝‍🧑\n" +
-            "3. **Other** 🌟",
-        parse_mode: "Markdown", // Enables bold and clean formatting
+            "1️⃣ <b>Prospective Student</b> 🎓\n" +
+            "2️⃣ <b>Parent</b> 🧑‍🤝‍🧑\n" +
+            "3️⃣ <b>Other</b> 🌟",
+        parse_mode: "HTML", // Enables bold and clean formatting
         reply_markup: {
       keyboard: [
         [{ text: "Prospective Student" }],
@@ -179,15 +179,15 @@ async function handleRegistration(chatId, messageText) {
       state.data.groupType = messageText; // Save the group type
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "🌟 **Wonderful to have you here at the SUTD Open House 2025!** 🌟\n\n" +
+        text: "🌟<b>Wonderful to have you here at the SUTD Open House 2025!</b>🌟\n\n" +
         "Before we proceed, is there any course of study you are particularly interested in? 👇\n" +
-        "1️⃣ **Computer Science and Design (CSD)**\n" +
-        "2️⃣ **Architecture and Sustainable Design (ASD)**\n" +
-        "3️⃣ **Engineering Systems and Design (ESD)**\n" +
-        "4️⃣ **Engineering Product Development (EPD)**\n" +
-        "5️⃣ **Design and Artificial Intelligence (DAI)**\n" +
-        "6️⃣ **None**",
-        parse_mode: "Markdown", // Enables bold and clean formatting
+        "1️⃣ <b>Computer Science and Design (CSD)</b>\n" +
+        "2️⃣ <b>Architecture and Sustainable Design (ASD)</b>\n" +
+        "3️⃣ <b>Engineering Systems and Design (ESD)</b>\n" +
+        "4️⃣ <b>Engineering Product Development (EPD)</b>\n" +
+        "5️⃣ <b>Design and Artificial Intelligence (DAI)</b>\n" +
+        "6️⃣ <b>None</b>",
+        parse_mode: "HTML", // Enables bold and clean formatting
         reply_markup: {
       keyboard: [
         [{ text: "CSD" }],
@@ -207,15 +207,15 @@ async function handleRegistration(chatId, messageText) {
       state.data.pillar = messageText; // Save the contact number
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "✅ **Please review your details carefully before submitting.**\n\n" +
+        text: "✅ <b>Please review your details carefully before submitting.</b>\n\n" +
           "By clicking ‘Yes,’ you consent to your data being used for event purposes. Be assured that you will not be contacted unless you have expressed your interest. 📢\n\n" +
-          "**Name:** " + state.data.name + "\n" +
-          "**Email Address:** " + state.data.email + "\n" +
-          "**Contact Number:** " + state.data.contactNumber + "\n" +
-          "**Group Type:** " + state.data.groupType + "\n" +
-          "**Pillar of Interest:** " + state.data.pillar + "\n\n" +
+          "<b>Name:</b> " + state.data.name + "\n" +
+          "<b>Email Address:</b> " + state.data.email + "\n" +
+          "<b>Contact Number:</b> " + state.data.contactNumber + "\n" +
+          "<b>Group Type:</b> " + state.data.groupType + "\n" +
+          "<b>Pillar of Interest:</b> " + state.data.pillar + "\n\n" +
           "If all looks good, please click ‘Yes’ to proceed! 😊",
-        parse_mode: "Markdown", // Enables bold and clean formatting
+        parse_mode: "HTML", // Enables bold and clean formatting
         reply_markup: {
       keyboard: [
         [{ text: "Yes" }],
@@ -234,7 +234,7 @@ async function handleRegistration(chatId, messageText) {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "Generating a personalised card for you and saving your data. Please wait patiently...",
-        parse_mode: "Markdown" // Enables bold and clean formatting
+        parse_mode: "HTML" // Enables bold and clean formatting
       });
       // Generate the card using DALL-E
       // const cardDescription = `A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be a "${state.data.audienceType}" in a retro game design.`;
@@ -259,8 +259,9 @@ async function handleRegistration(chatId, messageText) {
       // else {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Here will be generating of the card but disabled to avoid expenses. I will explain here" +
-            "how to use the bot"
+        text: "Here will be generating of the card but disabled to avoid expenses. I will explain here " +
+            "how to use the bot",
+        parse_mode: "HTML" // Enables bold and clean formatting
         // text: "Oops, something went wrong while generating your card. Please try again later with /start.",
       });
       // }
@@ -270,6 +271,7 @@ async function handleRegistration(chatId, messageText) {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "Something went wrong with your registration. Please try again with /start",
+        parse_mode: "HTML" // Enables bold and clean formatting
       });
       delete userStates[chatId]; // Reset state
   }
@@ -300,32 +302,85 @@ app.post(URI, async (req, res) => {
 
   try {
     // Check if the user is in the registration flow
-    if (userStates[chatId]?.step != 7 || messageText === '/start') {
+    await sendTypingAction(chatId);
+    if (userStates[chatId]?.step !== 7) {
       if (messageText === '/start') {
         // Start the registration flow
-        userStates[chatId] = { step: 1, data: {} };
+        userStates[chatId] = {step: 1, data: {}};
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
-          text: "🎉 **Welcome to the SUTD Open House!** 🎉\n" +
+          text: "🎉 <b>Welcome to the SUTD Open House!</b> 🎉\n" +
               "I’m your friendly AI chatbot here to help you make the most of your day. Let’s get started! What’s your name? 😊",
-          parse_mode: "Markdown" // Enables bold and clean formatting
+          parse_mode: "HTML" // Enables bold and clean formatting
+        });
+      } else if (!userStates[chatId] || messageText === '/events') {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "🎉 <b>Please register first using /start! </b> 😊",
+          parse_mode: "HTML" // Enables bold and clean formatting
         });
       } else {
         // Continue the registration flow
         await handleRegistration(chatId, messageText);
       }
-    } else {
-      // Proceed with Dialogflow interaction if not in registration flow
-      const response = await detectIntentResponse(req.body);
-      const requests = await convertToTelegramMessage(response, chatId);
+    }
+    else {
+      // normal state flow after registration
+      if (messageText === '/start') {
+        // Should now allow start handler anymore after registering
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "🎉 <b>You have already registered. Please contact @zedithx on telegram for further help </b> 😊",
+          parse_mode: "HTML" // Enables bold and clean formatting
+        });
+      }
+      else if (messageText === '/events') {
+        try {
+          // Initial message
+          await axios.post(`${API_URL}/sendMessage`, {
+            chat_id: chatId,
+            text: "🎉 <b>Please view the event schedules below! </b> 😊",
+            parse_mode: "HTML", // Enables bold and clean formatting
+          });
+          const event1Data = new FormData();
+          const event2Data = new FormData();
+          if (!fs.existsSync("./static/events_1.jpg")) {
+            console.error("File not found: ./static/events_1.jpg");
+          }
+          if (!fs.existsSync("./static/events_2.jpg")) {
+            console.error("File not found: ./static/events_2.jpg");
+          }
+          event1Data.append("chat_id", chatId);
+          event2Data.append("chat_id", chatId);
+          event1Data.append("photo", fs.createReadStream("./static/events_1.jpg"));
+          event2Data.append("photo", fs.createReadStream("./static/events_2.jpg"));
+          // Sending photos in parallel
+          await axios.post(`${API_URL}/sendPhoto`, event1Data, {
+            headers: event1Data.getHeaders(),
+          });
+          await axios.post(`${API_URL}/sendPhoto`, event2Data, {
+            headers: event2Data.getHeaders(),
+          });
+          console.log("All events sent successfully!");
+        } catch (error) {
+          console.error("Error sending events:", error.message);
+        }
+      }
+      else {
+        // Proceed with Dialogflow interaction if no keywords
+        const response = await detectIntentResponse(req.body);
+        console.info("Dialogflow Response:", JSON.stringify(response, null, 2));
+        const requests = await convertToTelegramMessage(response, chatId);
+        console.info("Converted Requests:", requests);
 
-      for (const request of requests) {
-        if (request.hasOwnProperty('photo')) {
-          await axios.post(`${API_URL}/sendPhoto`, request).catch((error) => console.error(error));
-        } else if (request.hasOwnProperty('voice')) {
-          await axios.post(`${API_URL}/sendVoice`, request).catch((error) => console.error(error));
-        } else {
-          await axios.post(`${API_URL}/sendMessage`, request).catch((error) => console.error(error));
+        for (const request of requests) {
+          if (request.hasOwnProperty('photo')) {
+            await axios.post(`${API_URL}/sendPhoto`, request).catch((error) => console.error(error));
+          } else if (request.hasOwnProperty('voice')) {
+            await axios.post(`${API_URL}/sendVoice`, request).catch((error) => console.error(error));
+          } else {
+            await axios.post(`${API_URL}/sendMessage`, request).catch((error) => console.error(error));
+          }
         }
       }
     }

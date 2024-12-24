@@ -19,6 +19,10 @@
    # Copy local code to the container image.
    COPY . .
 
+   # Set permissions for the static files within cx/telegram/static.
+    RUN chmod -R 755 /usr/src/app/${INTEGRATION}/static
+
    # Run the web service on container startup.
    WORKDIR ${INTEGRATION}
+
    CMD [ "npm", "start" ]
