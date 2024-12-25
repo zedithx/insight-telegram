@@ -17,6 +17,9 @@ const structProtoToJson =
 const express = require('express');
 const axios = require('axios');
 const bodyParser = require('body-parser');
+const FormData = require('form-data');
+const fs = require('fs');
+
 
 const API_URL = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
 const URI = `/webhook/${TELEGRAM_TOKEN}`;
@@ -24,6 +27,18 @@ const WEBHOOK = SERVER_URL + URI;
 
 const app = express();
 app.use(bodyParser.json());
+
+const states = {
+  START: "START",
+  GET_NAME: "GET_NAME",
+  GET_EMAIL: "GET_EMAIL",
+  GET_PHONE: "GET_PHONE",
+  SELECT_GROUP: "SELECT_GROUP",
+  SELECT_PILLAR: "SELECT_PILLAR",
+  CONFIRMATION: "CONFIRMATION",
+  PLANNER: "PLANNER",
+  FINISH: "FINISH"
+};
 
 // Imports the Google Cloud Some API library
 const {SessionsClient} = require('@google-cloud/dialogflow-cx');
@@ -49,6 +64,10 @@ function telegramToDetectIntent(telegramRequest, sessionPath) {
   };
 
   return request;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Converts detectIntent responses to Telegram message requests.
@@ -124,59 +143,101 @@ const userStates = {}; // In-memory store for tracking user registration state
 // Function to handle registration flow
 async function handleRegistration(chatId, messageText) {
   if (!userStates[chatId]) {
-    // Initialize registration state
-    userStates[chatId] = { step: 1, data: {} };
+    // Initialize user state
+    userStates[chatId] = { state: states.START, data: {} };
   }
 
-  const state = userStates[chatId];
+  const user = userStates[chatId];
 
-  switch (state.step) {
-    case 1: // Step 2: Get email
-      state.step++;
-      state.data.name = messageText; // Save the name
+  switch (user.state) {
+    case states.START:
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: `Nice to meet you, <b>${messageText}</b>! 🤝\nCan I grab your email so I can share updates and 
-help you even after the Open House? 📧`,
-        parse_mode: "HTML" // Enables bold and clean formatting
+        text: "🎉 <b>Welcome to the SUTD Open House!</b> 🎉\n" +
+              "Let’s get started! What’s your name? 😊",
+        parse_mode: "HTML",
       });
+      user.state = states.GET_NAME;
       break;
 
-    case 2: // Step 3: Get contact number
-      state.step++;
-      state.data.email = messageText; // Save the email
+    case states.GET_NAME: // Step 2: Get email
+      if (messageText.trim().length === 0) {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Oops! Name cannot be empty. Please tell me your name 😊",
+          parse_mode: "HTML"
+        });
+        return;
+      }
+      user.data.name = messageText; // Save the name
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Thanks a bunch! 🙌 \nJust one more thing – could you share your phone number? " +
+        text: `Nice to meet you, <b>${messageText}</b>! 🤝\nCan I grab your email so I can share updates and help you even after the Open House? 📧`,
+        parse_mode: "HTML" // Enables bold and clean formatting
+      });
+      user.state = states.GET_EMAIL;
+      break;
+
+    case states.GET_EMAIL:
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(messageText)) {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Hmm, that doesn't look like a valid email. Please try again. 📧",
+          parse_mode: "HTML",
+        });
+        return;
+      }
+      user.data.email = messageText;
+      await axios.post(`${API_URL}/sendMessage`, {
+        chat_id: chatId,
+         text: "Thanks a bunch! 🙌 \nJust one more thing – could you share your phone number? " +
             "In case we need to contact you after Open House! 📱",
-        parse_mode: "HTML" // Enables bold and clean formatting
+        parse_mode: "HTML",
       });
+      user.state = states.GET_PHONE;
       break;
 
-    case 3: // Step 3: Prospective student, parent or other?
-      state.step++;
-      state.data.contactNumber = messageText; // Save the contact number
+    case states.GET_PHONE:
+      if (!/^[689]\d{7}$/.test(messageText)) {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "That doesn't seem like a valid phone number. Please try again. 📱",
+          parse_mode: "HTML",
+        });
+        return;
+      }
+      user.data.phone = messageText;
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "Awesome! 🚀 Before we dive in, I’d love to know – which best describes you? \n" +
             "1️⃣ <b>Prospective Student</b> 🎓\n" +
             "2️⃣ <b>Parent</b> 🧑‍🤝‍🧑\n" +
             "3️⃣ <b>Other</b> 🌟",
-        parse_mode: "HTML", // Enables bold and clean formatting
+        parse_mode: "HTML",
         reply_markup: {
-      keyboard: [
-        [{ text: "Prospective Student" }],
-        [{ text: "Parent" }],
-        [{ text: "Others" }]
-      ],
-      one_time_keyboard: true, // The keyboard disappears after selection
-      resize_keyboard: true // Resizes the keyboard for a better UI
-      }});
+          keyboard: [
+            [{ text: "Prospective Student" }],
+            [{ text: "Parent" }],
+            [{ text: "Other" }],
+          ],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      });
+      user.state = states.SELECT_GROUP;
       break;
 
-    case 4:
-      state.step++;
-      state.data.groupType = messageText; // Save the group type
+
+    case states.SELECT_GROUP:
+      if (!["Prospective Student", "Parent", "Other"].includes(messageText)) {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Please select one of the provided options.",
+          parse_mode: "HTML",
+        });
+        return;
+      }
+      user.data.groupType = messageText;
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "🌟<b>Wonderful to have you here at the SUTD Open House 2025!</b>🌟\n\n" +
@@ -187,33 +248,42 @@ help you even after the Open House? 📧`,
         "4️⃣ <b>Engineering Product Development (EPD)</b>\n" +
         "5️⃣ <b>Design and Artificial Intelligence (DAI)</b>\n" +
         "6️⃣ <b>None</b>",
-        parse_mode: "HTML", // Enables bold and clean formatting
+        parse_mode: "HTML",
         reply_markup: {
-      keyboard: [
-        [{ text: "CSD" }],
-        [{ text: "ASD" }],
-        [{ text: "ESD" }],
-        [{ text: "EPD" }],
-        [{ text: "DAI" }],
-        [{ text: "None" }]
-      ],
-      one_time_keyboard: true, // The keyboard disappears after selection
-      resize_keyboard: true // Resizes the keyboard for a better UI
-      }});
+          keyboard: [
+            [{ text: "CSD" }],
+            [{ text: "ASD" }],
+            [{ text: "ESD" }],
+            [{ text: "EPD" }],
+            [{ text: "DAI" }],
+            [{ text: "None" }],
+          ],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      });
+      user.state = states.SELECT_PILLAR;
       break;
 
-    case 5:
-      state.step++;
-      state.data.pillar = messageText; // Save the contact number
+    case states.SELECT_PILLAR:
+      if (!["CSD", "ASD", "ESD", "EPD", "DAI", "None"].includes(messageText)) {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Please select one of the provided options.",
+          parse_mode: "HTML",
+        });
+        return;
+      }
+      user.data.pillar = messageText;
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "✅ <b>Please review your details carefully before submitting.</b>\n\n" +
           "By clicking ‘Yes,’ you consent to your data being used for event purposes. Be assured that you will not be contacted unless you have expressed your interest. 📢\n\n" +
-          "<b>Name:</b> " + state.data.name + "\n" +
-          "<b>Email Address:</b> " + state.data.email + "\n" +
-          "<b>Contact Number:</b> " + state.data.contactNumber + "\n" +
-          "<b>Group Type:</b> " + state.data.groupType + "\n" +
-          "<b>Pillar of Interest:</b> " + state.data.pillar + "\n\n" +
+          "<b>Name:</b> " + user.data.name + "\n" +
+          "<b>Email Address:</b> " + user.data.email + "\n" +
+          "<b>Contact Number:</b> " + user.data.phone + "\n" +
+          "<b>Group Type:</b> " + user.data.groupType + "\n" +
+          "<b>Pillar of Interest:</b> " + user.data.pillar + "\n\n" +
           "If all looks good, please click ‘Yes’ to proceed! 😊",
         parse_mode: "HTML", // Enables bold and clean formatting
         reply_markup: {
@@ -224,20 +294,27 @@ help you even after the Open House? 📧`,
       one_time_keyboard: true, // The keyboard disappears after selection
       resize_keyboard: true // Resizes the keyboard for a better UI
       }});
+      user.state = states.CONFIRMATION;
       break;
 
 
-    case 6:
-      state.step++;
-      state.data.audienceType = messageText; // Save the audienceType
-      //  Respond first due to long wait time
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: "Generating a personalised card for you and saving your data. Please wait patiently...",
-        parse_mode: "HTML" // Enables bold and clean formatting
-      });
+    case states.CONFIRMATION:
+      if (messageText.toLowerCase() !== "yes") {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "It seems you want to make changes. Please restart with /start.",
+          parse_mode: "HTML",
+        });
+        delete userStates[chatId];
+      }
+      else {
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Generating a personalised card for you and saving your data. Please wait patiently...",
+          parse_mode: "HTML" // Enables bold and clean formatting
+        });
       // Generate the card using DALL-E
-      // const cardDescription = `A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be a "${state.data.audienceType}" in a retro game design.`;
+      // const cardDescription = A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be a "${state.data.audienceType}" in a retro game design.;
       // const dalleImageResponse = await generateCardImage(cardDescription);
       //
       // if (dalleImageResponse && dalleImageResponse.data && dalleImageResponse.data[0]) {
@@ -247,24 +324,68 @@ help you even after the Open House? 📧`,
       //     // Debug: Log the URL to ensure it's correctly extracted
       //     console.log("Image URL to send:", imageUrl);
       //
-      //     await axios.post(`${API_URL}/sendPhoto`, {
+      //     axios.post(${API_URL}/sendPhoto, {
       //       chat_id: chatId,
       //       photo: imageUrl, // Use the URL as-is
-      //       caption: `Here's your personalized card, ${state.data.name}!`,
+      //       caption: Here's your personalized card, ${state.data.name}!,
       //     });
       //   } catch (error) {
       //     console.error('Error sending photo to Telegram:', error.response?.data || error.message);
       //   }
       // }
       // else {
-      await axios.post(`${API_URL}/sendMessage`, {
+        await sleep(3000)
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "With that, here are the events that are happening on today's Open House",
+          parse_mode: "HTML" // Enables bold and clean formatting
+          // text: "Oops, something went wrong while generating your card. Please try again later with /start.",
+        });
+        await showEvents(chatId)
+        await sleep(3000)
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "✨Now, I will help you to plan your schedule. Do you have an idea of what events you want to go today? I'll wait for you to decide :) ✨",
+          parse_mode: "HTML", // Enables bold and clean formatting
+          reply_markup: {
+        keyboard: [
+          [{ text: "Yes" }],
+          [{ text: "No" }],
+        ],
+        one_time_keyboard: true, // The keyboard disappears after selection
+        resize_keyboard: true // Resizes the keyboard for a better UI
+        }});
+      }
+      user.state = states.PLANNER;
+      break;
+
+    case states.PLANNER: // Questionaire or allow them to choose among the events
+      if (messageText.toLowerCase() === "yes") {
+        // Poll for the events here
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "Which events are you interested in attending today? 🗓️",
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [{text: "Campus Tour 🏫", callback_data: "event_campus_tour"}],
+              [{text: "Workshops 🛠️", callback_data: "event_workshops"}],
+              [{text: "Admission Talks 🎓", callback_data: "event_admission_talks"}],
+              [{text: "Lab Demonstrations 🧪", callback_data: "event_lab_demos"}],
+              [{text: "Student Performances 🎭", callback_data: "event_student_perf"}]
+            ]
+          }
+        });
+      }
+      else {
+        // Questionaire
+        await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
-        text: "Here will be generating of the card but disabled to avoid expenses. I will explain here " +
-            "how to use the bot",
+        text: "Interests Poll",
         parse_mode: "HTML" // Enables bold and clean formatting
-        // text: "Oops, something went wrong while generating your card. Please try again later with /start.",
-      });
-      // }
+        });
+      }
+      user.state = states.FINISH; //temporary
       break;
 
     default:
@@ -296,6 +417,29 @@ async function generateCardImage(description) {
   }
 }
 
+// Function to show the events pictures
+async function showEvents(chatId){
+  try {
+      const event1Data = new FormData();
+      const event2Data = new FormData();
+      event1Data.append("chat_id", chatId);
+      event2Data.append("chat_id", chatId);
+      event1Data.append("photo", fs.createReadStream("./static/events_1.jpg"));
+      event2Data.append("photo", fs.createReadStream("./static/events_2.jpg"));
+      // Sending photos in parallel
+      await Promise.all([
+        axios.post(`${API_URL}/sendPhoto`, event1Data, {
+          headers: event1Data.getHeaders(),
+        }),
+        axios.post(`${API_URL}/sendPhoto`, event2Data, {
+          headers: event2Data.getHeaders(),
+        }),
+    ]);
+  } catch (error) {
+    console.error('Error showing picture of events:', error.message);
+  }
+}
+
 app.post(URI, async (req, res) => {
   const chatId = req.body.message.chat.id;
   const messageText = req.body.message.text;
@@ -303,17 +447,8 @@ app.post(URI, async (req, res) => {
   try {
     // Check if the user is in the registration flow
     await sendTypingAction(chatId);
-    if (userStates[chatId]?.step !== 7) {
-      if (messageText === '/start') {
-        // Start the registration flow
-        userStates[chatId] = {step: 1, data: {}};
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "🎉 <b>Welcome to the SUTD Open House!</b> 🎉\n" +
-              "I’m your friendly AI chatbot here to help you make the most of your day. Let’s get started! What’s your name? 😊",
-          parse_mode: "HTML" // Enables bold and clean formatting
-        });
-      } else if (!userStates[chatId] || messageText === '/events') {
+    if (userStates[chatId]?.state !== states.FINISH) {
+      if (messageText === '/events') {
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
           text: "🎉 <b>Please register first using /start! </b> 😊",
@@ -335,43 +470,20 @@ app.post(URI, async (req, res) => {
         });
       }
       else if (messageText === '/events') {
-        try {
-          // Initial message
-          await axios.post(`${API_URL}/sendMessage`, {
-            chat_id: chatId,
-            text: "🎉 <b>Please view the event schedules below! </b> 😊",
-            parse_mode: "HTML", // Enables bold and clean formatting
-          });
-          const event1Data = new FormData();
-          const event2Data = new FormData();
-          if (!fs.existsSync("./static/events_1.jpg")) {
-            console.error("File not found: ./static/events_1.jpg");
-          }
-          if (!fs.existsSync("./static/events_2.jpg")) {
-            console.error("File not found: ./static/events_2.jpg");
-          }
-          event1Data.append("chat_id", chatId);
-          event2Data.append("chat_id", chatId);
-          event1Data.append("photo", fs.createReadStream("./static/events_1.jpg"));
-          event2Data.append("photo", fs.createReadStream("./static/events_2.jpg"));
-          // Sending photos in parallel
-          await axios.post(`${API_URL}/sendPhoto`, event1Data, {
-            headers: event1Data.getHeaders(),
-          });
-          await axios.post(`${API_URL}/sendPhoto`, event2Data, {
-            headers: event2Data.getHeaders(),
-          });
-          console.log("All events sent successfully!");
-        } catch (error) {
-          console.error("Error sending events:", error.message);
-        }
+        // Initial message
+        await axios.post(`${API_URL}/sendMessage`, {
+          chat_id: chatId,
+          text: "🎉 <b>Please view the event schedules below! </b> 😊",
+          parse_mode: "HTML", // Enables bold and clean formatting
+        });
+        await showEvents(chatId)
       }
       else {
         // Proceed with Dialogflow interaction if no keywords
         const response = await detectIntentResponse(req.body);
-        console.info("Dialogflow Response:", JSON.stringify(response, null, 2));
+        // console.info("Dialogflow Response:", JSON.stringify(response, null, 2));
         const requests = await convertToTelegramMessage(response, chatId);
-        console.info("Converted Requests:", requests);
+        // console.info("Converted Requests:", requests);
 
         for (const request of requests) {
           if (request.hasOwnProperty('photo')) {
