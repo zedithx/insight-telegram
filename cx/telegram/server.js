@@ -24,17 +24,6 @@ const db = admin.firestore();
 const DATE = "24 Feb" // Change date here
 const API_URL = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
 const URI = `/webhook/${TELEGRAM_TOKEN}`;
-const states = {
-  START: "START",
-  GET_NAME: "GET_NAME",
-  GET_EMAIL: "GET_EMAIL",
-  GET_PHONE: "GET_PHONE",
-  SELECT_GROUP: "SELECT_GROUP",
-  SELECT_PILLAR: "SELECT_PILLAR",
-  CONFIRMATION: "CONFIRMATION",
-  PLANNER: "PLANNER",
-  FINISH: "FINISH"
-};
 const WEBHOOK = SERVER_URL + URI;
 const app = express();
 
@@ -42,6 +31,8 @@ app.use(bodyParser.json());
 
 // Imports the Google Cloud Some API library
 const {SessionsClient} = require('@google-cloud/dialogflow-cx');
+const {handleRegistration} = require("./flows/registration");
+const {END_FLOW} = require("./flows/eventpass");
 /**
  * Example for regional endpoint:
  *   const locationId = 'us-central1'
@@ -66,9 +57,7 @@ function telegramToDetectIntent(telegramRequest, sessionPath) {
   return request;
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+
 
 // Converts detectIntent responses to Telegram message requests.
 async function convertToTelegramMessage(responses, chatId) {
@@ -140,295 +129,6 @@ const sendTypingAction = async (chatId) => {
 
 const userStates = {}; // In-memory store for tracking user registration state
 
-// Function to handle registration flow
-async function handleRegistration(chatId, messageText) {
-  if (!userStates[chatId]) {
-    // Initialize user state
-    userStates[chatId] = { state: states.PLANNER, data: {} };
-  }
-
-  const user = userStates[chatId];
-
-  switch (user.state) {
-    case states.START:
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: "🎉 <b>Welcome to the SUTD Open House!</b> 🎉\n" +
-              "Let’s get started! What’s your name? 😊",
-        parse_mode: "HTML",
-      });
-      user.state = states.GET_NAME;
-      break;
-
-    case states.GET_NAME: // Step 2: Get email
-      if (messageText.trim().length === 0) {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Oops! Name cannot be empty. Please tell me your name 😊",
-          parse_mode: "HTML"
-        });
-        return;
-      }
-      user.data.name = messageText; // Save the name
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: `Nice to meet you, <b>${messageText}</b>! 🤝\nCan I grab your email so I can share updates and help you even after the Open House? 📧`,
-        parse_mode: "HTML" // Enables bold and clean formatting
-      });
-      user.state = states.GET_EMAIL;
-      break;
-
-    case states.GET_EMAIL:
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(messageText)) {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Hmm, that doesn't look like a valid email. Please try again. 📧",
-          parse_mode: "HTML",
-        });
-        return;
-      }
-      user.data.email = messageText;
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-         text: "Thanks a bunch! 🙌 \nJust one more thing – could you share your phone number? " +
-            "In case we need to contact you after Open House! 📱",
-        parse_mode: "HTML",
-      });
-      user.state = states.GET_PHONE;
-      break;
-
-    case states.GET_PHONE:
-      if (!/^[689]\d{7}$/.test(messageText)) {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "That doesn't seem like a valid phone number. Please try again. 📱",
-          parse_mode: "HTML",
-        });
-        return;
-      }
-      user.data.phone = messageText;
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: "Awesome! 🚀 Before we dive in, I’d love to know – which best describes you? \n" +
-            "1️⃣ <b>Prospective Student</b> 🎓\n" +
-            "2️⃣ <b>Parent</b> 🧑‍🤝‍🧑\n" +
-            "3️⃣ <b>Other</b> 🌟",
-        parse_mode: "HTML",
-        reply_markup: {
-          keyboard: [
-            [{ text: "Prospective Student" }],
-            [{ text: "Parent" }],
-            [{ text: "Other" }],
-          ],
-          one_time_keyboard: true,
-          resize_keyboard: true,
-        },
-      });
-      user.state = states.SELECT_GROUP;
-      break;
-
-
-    case states.SELECT_GROUP:
-      if (!["Prospective Student", "Parent", "Other"].includes(messageText)) {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Please select one of the provided options.",
-          parse_mode: "HTML",
-        });
-        return;
-      }
-      user.data.groupType = messageText;
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: "🌟<b>Wonderful to have you here at the SUTD Open House 2025!</b>🌟\n\n" +
-        "Before we proceed, is there any course of study you are particularly interested in? 👇\n" +
-        "1️⃣ <b>Computer Science and Design (CSD)</b>\n" +
-        "2️⃣ <b>Architecture and Sustainable Design (ASD)</b>\n" +
-        "3️⃣ <b>Engineering Systems and Design (ESD)</b>\n" +
-        "4️⃣ <b>Engineering Product Development (EPD)</b>\n" +
-        "5️⃣ <b>Design and Artificial Intelligence (DAI)</b>\n" +
-        "6️⃣ <b>None</b>",
-        parse_mode: "HTML",
-        reply_markup: {
-          keyboard: [
-            [{ text: "CSD" }],
-            [{ text: "ASD" }],
-            [{ text: "ESD" }],
-            [{ text: "EPD" }],
-            [{ text: "DAI" }],
-            [{ text: "None" }],
-          ],
-          one_time_keyboard: true,
-          resize_keyboard: true,
-        },
-      });
-      user.state = states.SELECT_PILLAR;
-      break;
-
-    case states.SELECT_PILLAR:
-      if (!["CSD", "ASD", "ESD", "EPD", "DAI", "None"].includes(messageText)) {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Please select one of the provided options.",
-          parse_mode: "HTML",
-        });
-        return;
-      }
-      user.data.pillar = messageText;
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: "✅ <b>Please review your details carefully before submitting.</b>\n\n" +
-          "By clicking ‘Yes,’ you consent to your data being used for event purposes. Be assured that you will not be contacted unless you have expressed your interest. 📢\n\n" +
-          "<b>Name:</b> " + user.data.name + "\n" +
-          "<b>Email Address:</b> " + user.data.email + "\n" +
-          "<b>Contact Number:</b> " + user.data.phone + "\n" +
-          "<b>Group Type:</b> " + user.data.groupType + "\n" +
-          "<b>Pillar of Interest:</b> " + user.data.pillar + "\n\n" +
-          "If all looks good, please click ‘Yes’ to proceed! 😊",
-        parse_mode: "HTML", // Enables bold and clean formatting
-        reply_markup: {
-      keyboard: [
-        [{ text: "Yes" }],
-        [{ text: "No" }],
-      ],
-      one_time_keyboard: true, // The keyboard disappears after selection
-      resize_keyboard: true // Resizes the keyboard for a better UI
-      }});
-      user.state = states.CONFIRMATION;
-      break;
-
-
-    case states.CONFIRMATION:
-      if (messageText.toLowerCase() !== "yes") {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "It seems you want to make changes. Please restart with /start.",
-          parse_mode: "HTML",
-        });
-        delete userStates[chatId];
-      }
-      else {
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Generating a personalised card for you and saving your data. Please wait patiently...",
-          parse_mode: "HTML" // Enables bold and clean formatting
-        });
-      // Generate the card using DALL-E
-      // const cardDescription = A personalized card with the user's name "${state.data.name}", email "${state.data.color}", contact number "${state.data.hobby}", and the character will be a "${state.data.audienceType}" in a retro game design.;
-      // const dalleImageResponse = await generateCardImage(cardDescription);
-      //
-      // if (dalleImageResponse && dalleImageResponse.data && dalleImageResponse.data[0]) {
-      //   const imageUrl = dalleImageResponse.data[0].url; // Extract the image URL
-      //
-      //   try {
-      //     // Debug: Log the URL to ensure it's correctly extracted
-      //     console.log("Image URL to send:", imageUrl);
-      //
-      //     axios.post(${API_URL}/sendPhoto, {
-      //       chat_id: chatId,
-      //       photo: imageUrl, // Use the URL as-is
-      //       caption: Here's your personalized card, ${state.data.name}!,
-      //     });
-      //   } catch (error) {
-      //     console.error('Error sending photo to Telegram:', error.response?.data || error.message);
-      //   }
-      // }
-      // else {
-        await sleep(3000)
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "With that, here are the events that are happening on today's Open House",
-          parse_mode: "HTML" // Enables bold and clean formatting
-          // text: "Oops, something went wrong while generating your card. Please try again later with /start.",
-        });
-        await showEvents(chatId)
-        await sleep(3000)
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "✨Now, I will help you to plan your schedule. Do you have an idea of what events you want to go today? I'll wait for you to decide :) ✨",
-          parse_mode: "HTML", // Enables bold and clean formatting
-          reply_markup: {
-        keyboard: [
-          [{ text: "Yes" }],
-          [{ text: "No" }],
-        ],
-        one_time_keyboard: true, // The keyboard disappears after selection
-        resize_keyboard: true // Resizes the keyboard for a better UI
-        }});
-      }
-      user.state = states.PLANNER;
-      break;
-
-    case states.PLANNER: // Questionaire or allow them to choose among the events
-      if (messageText.toLowerCase() === "yes") {
-        try {
-          // Reference the document for today's events
-          const eventsDoc = db.collection("events").doc(DATE);
-          const docSnapshot = await eventsDoc.get();
-          // Fetch and map the event names into inline buttons
-          if (docSnapshot.exists) {
-            const eventsDict = docSnapshot.data();
-            const inlineKeyboard = Object.keys(eventsDict).map((eventName, index) => [
-              {
-                text: eventName,
-                callback_data: `events_${index}`,
-              },
-            ]);
-            const maxButtonsPerPage = 10;
-            const pages = [];
-            for (let i = 0; i < inlineKeyboard.length; i += maxButtonsPerPage) {
-              pages.push(inlineKeyboard.slice(i, i + maxButtonsPerPage));
-            }
-            for (const page of pages) {
-              await axios.post(`${API_URL}/sendMessage`, {
-                chat_id: chatId,
-                text: "Which events are you interested in attending today? 🗓️",
-                parse_mode: "HTML",
-                reply_markup: {
-                  inline_keyboard: page,
-                },
-              });
-            }
-          }
-          else {
-            await axios.post(`${API_URL}/sendMessage`, {
-              chat_id: chatId,
-              text: "There were no events found 🗓️",
-              parse_mode: "HTML"
-            })
-          }
-        }
-        catch (error) {
-          console.error("Error fetching or sending events:", error.message);
-
-          // Notify the user of an error
-          await axios.post(`${API_URL}/sendMessage`, {
-            chat_id: chatId,
-            text: "Oops! Something went wrong while fetching the events. Please try again later. ⚠️",
-            parse_mode: "HTML",
-          });
-        }
-      } else {
-        // Questionaire
-        await axios.post(`${API_URL}/sendMessage`, {
-          chat_id: chatId,
-          text: "Interests Poll",
-          parse_mode: "HTML" // Enables bold and clean formatting
-        });
-      }
-      user.state = states.FINISH; //temporary
-      break;
-
-    default:
-      await axios.post(`${API_URL}/sendMessage`, {
-        chat_id: chatId,
-        text: "Something went wrong with your registration. Please try again with /start",
-        parse_mode: "HTML" // Enables bold and clean formatting
-      });
-      delete userStates[chatId]; // Reset state
-  }
-}
-
 // Function to generate the card using DALL-E
 async function generateCardImage(description) {
   try {
@@ -485,7 +185,7 @@ app.post(URI, async (req, res) => {
       const messageText = req.body.message.text;
       // Check if the user is in the registration flow
       await sendTypingAction(chatId);
-      if (userStates[chatId]?.state !== states.FINISH) {
+      if (userStates[chatId]?.state !== END_FLOW) {
         if (messageText === '/events') {
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
@@ -494,7 +194,7 @@ app.post(URI, async (req, res) => {
           });
         } else {
           // Continue the registration flow
-          await handleRegistration(chatId, messageText);
+          await handleRegistration(chatId, messageText, userStates, API_URL);
         }
       } else {
         // normal state flow after registration
