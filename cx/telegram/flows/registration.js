@@ -1,11 +1,12 @@
-// Function to handle registration flow
-import {EVENT_START, event_states, handleEventPass} from "./eventpass";
-import {sleep} from "../utils/Sleep";
-
 const axios = require("axios");
 
-// Define state for end of registration flow
+// Function to handle registration flow
+const {sleep} = require("../utils/Sleep");
 
+// Standardise event_start and states
+const { EVENT_START, event_states, handleEventPass } = require("./eventpass");
+
+// Define state for end of registration flow
 const reg_states = {
   START: "START",
   SELECT_GROUP: "SELECT_GROUP",
@@ -16,12 +17,13 @@ const reg_states = {
   CONFIRMATION: "CONFIRMATION",
 };
 
-export async function handleRegistration(chatId, messageText, userStates, API_URL) {
+async function handleRegistration(chatId, messageText, userStates, API_URL) {
+    console.info("userState:" + userStates[chatId])
     if (!userStates[chatId]) {
         // Initialize user state
         userStates[chatId] = {state: reg_states.START, data: {}};
     }
-    if (userStates[chatId] in event_states) {
+    if (userStates[chatId].state in event_states) {
         const user_state = userStates[chatId]
         await handleEventPass(chatId, messageText, user_state, API_URL);
     }
@@ -34,8 +36,20 @@ export async function handleRegistration(chatId, messageText, userStates, API_UR
                     chat_id: chatId,
                     text: "🎉 <b>Welcome to the SUTD Open House!</b> 🎉\n" +
                         "I’m your friendly AI chatbot here to help you make the most of your day. Let’s get started! 😊\n" +
-                        "Which of these options best describes you?",
+                        "Which of these options best describes you?\n" +
+                        "1️⃣ <b>Prospective Student</b> 🎓\n" +
+                        "2️⃣ <b>Parent</b> 🧑‍🤝‍🧑\n" +
+                        "3️⃣ <b>Other</b> 🌟",
                     parse_mode: "HTML",
+                    reply_markup: {
+                      keyboard: [
+                        [{ text: "Prospective Student" }],
+                        [{ text: "Parent" }],
+                        [{ text: "Other" }],
+                      ],
+                      one_time_keyboard: true,
+                      resize_keyboard: true,
+                    },
                 });
                 user.state = reg_states.SELECT_GROUP;
                 break;
@@ -174,10 +188,10 @@ export async function handleRegistration(chatId, messageText, userStates, API_UR
                         resize_keyboard: true // Resizes the keyboard for a better UI
                         }// Enables bold and clean formatting
                     });
+                    // state will now be handled by eventpass handler
+                    user.state = EVENT_START;
+                    break;
                 }
-                // state will now be handled by eventpass handler
-                user.state = EVENT_START;
-                break;
 
             default:
                 await axios.post(`${API_URL}/sendMessage`, {
@@ -189,3 +203,5 @@ export async function handleRegistration(chatId, messageText, userStates, API_UR
         }
     }
 }
+
+module.exports = { handleRegistration };

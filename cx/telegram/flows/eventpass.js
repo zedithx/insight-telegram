@@ -1,19 +1,18 @@
 // Function to handle registration flow
-import {REG_FINISH} from "./registration";
 
 const axios = require("axios");
 
-export const event_states = {
+const event_states = {
   SELECT_GENDER: "SELECT_GENDER",
   SELECT_PILLAR: "SELECT_PILLAR",
   SELECT_INTEREST: "SELECT_INTEREST",
   END_EVENT: "END_EVENT",
 };
 
-export const EVENT_START = event_states.SELECT_GENDER
-export const END_FLOW = event_states.END_FLOW
+const EVENT_START = event_states.SELECT_GENDER
+const END_FLOW = event_states.END_EVENT
 
-export async function handleEventPass(chatId, messageText, user, API_URL) {
+async function handleEventPass(chatId, messageText, user, API_URL) {
 
   switch (user.state) {
 
@@ -30,7 +29,7 @@ export async function handleEventPass(chatId, messageText, user, API_URL) {
       await axios.post(`${API_URL}/sendMessage`, {
         chat_id: chatId,
         text: "🌟<b>Wonderful</b>🌟\n\n" +
-        "Now, is there any course of study you are particularly interested in? 👇\n" +
+        "Is there any course of study you are particularly interested in? 👇\n" +
         "1️⃣ <b>Computer Science and Design (CSD)</b>\n" +
         "2️⃣ <b>Architecture and Sustainable Design (ASD)</b>\n" +
         "3️⃣ <b>Engineering Systems and Design (ESD)</b>\n" +
@@ -55,7 +54,7 @@ export async function handleEventPass(chatId, messageText, user, API_URL) {
       break;
 
     case event_states.SELECT_PILLAR:
-      if (!["Prospective Student", "Parent", "Other"].includes(messageText)) {
+      if (!["CSD", "ASD", "ESD", "EPD", "DAI", "None"].includes(messageText)) {
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
           text: "Please select one of the provided options.",
@@ -67,13 +66,13 @@ export async function handleEventPass(chatId, messageText, user, API_URL) {
         chat_id: chatId,
         text: "Lastly, 🌟 Let's get to know you better! 🌟\n" +
             "What are your interests?" +
-            "<b>🔬 Science & Technology</b>" +
-            "<b>🎨 Art & Design</b>" +
-            "<b>💻 Coding & Programming</b>" +
-            "<b>🌿 Sustainability</b>" +
-            "<b>🤖 Artificial Intelligence</b>" +
-            "<b>🏗️ Architecture</b>" +
-            "<b>🎮 Gaming</b>" +
+            "<b>🔬 Science & Technology</b>\n" +
+            "<b>🎨 Art & Design</b>\n" +
+            "<b>💻 Coding & Programming</b>\n" +
+            "<b>🌿 Sustainability</b>\n" +
+            "<b>🤖 Artificial Intelligence</b>\n" +
+            "<b>🏗️ Architecture</b>\n" +
+            "<b>🎮 Gaming</b>\n" +
             "<b>📊 Data Analysis</b>",
         parse_mode: "HTML", // Enables bold and clean formatting
         reply_markup: {
@@ -120,3 +119,5 @@ export async function handleEventPass(chatId, messageText, user, API_URL) {
       });
   }
 }
+
+module.exports = { EVENT_START, END_FLOW, event_states, handleEventPass };

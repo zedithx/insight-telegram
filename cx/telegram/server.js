@@ -19,6 +19,8 @@ admin.initializeApp({
 // Initialize Firestore
 const db = admin.firestore();
 
+// Paste credentials for deployment below this line
+
 
 // CONSTANTS
 const DATE = "24 Feb" // Change date here
@@ -31,6 +33,8 @@ app.use(bodyParser.json());
 
 // Imports the Google Cloud Some API library
 const {SessionsClient} = require('@google-cloud/dialogflow-cx');
+
+// Import from other files
 const {handleRegistration} = require("./flows/registration");
 const {END_FLOW} = require("./flows/eventpass");
 /**
@@ -185,6 +189,7 @@ app.post(URI, async (req, res) => {
       const messageText = req.body.message.text;
       // Check if the user is in the registration flow
       await sendTypingAction(chatId);
+      console.log(userStates)
       if (userStates[chatId]?.state !== END_FLOW) {
         if (messageText === '/events') {
           await axios.post(`${API_URL}/sendMessage`, {
