@@ -37,6 +37,7 @@ const {SessionsClient} = require('@google-cloud/dialogflow-cx');
 // Import from other files
 const {handleRegistration} = require("./flows/registration");
 const {END_FLOW} = require("./flows/eventpass");
+
 /**
  * Example for regional endpoint:
  *   const locationId = 'us-central1'
@@ -189,7 +190,6 @@ app.post(URI, async (req, res) => {
       const messageText = req.body.message.text;
       // Check if the user is in the registration flow
       await sendTypingAction(chatId);
-      console.log(userStates)
       if (userStates[chatId]?.state !== END_FLOW) {
         if (messageText === '/events') {
           await axios.post(`${API_URL}/sendMessage`, {
@@ -214,11 +214,31 @@ app.post(URI, async (req, res) => {
           // Initial message
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
-            text: "🎉 <b>Please view the event schedules below! </b> 😊",
+            text: "🎉 <b>Here are the exciting events happening at SUTD Open House 2025!</b> 😊",
             parse_mode: "HTML", // Enables bold and clean formatting
           });
           await showEvents(chatId)
-        } else {
+          await axios.post(`${API_URL}/sendMessage`, {
+            chat_id: chatId,
+            text: "<b>🗺️ Would you like me to help plan your SUTD Open House visit today?</b>" +
+                "1️⃣ <b>⏳ Maybe later</b> 🎓\n" +
+                "2️⃣ <b>✅ Yes, help me plan my journey</b> 🧑‍🤝‍🧑",
+            parse_mode: "HTML", // Enables bold and clean formatting
+            reply_markup: {
+              keyboard: [
+                [{text: "Later"}],
+                [{text: "Yes"}],
+              ],
+              one_time_keyboard: true,
+              resize_keyboard: true,
+            },
+          });
+          userStates[chatId].plan = true;
+        }
+        else if (userStates[chatId]?.plan) {
+            // await handlePlanning();
+        }
+        else {
           // Proceed with Dialogflow interaction if no keywords
           const response = await detectIntentResponse(req.body);
           // console.info("Dialogflow Response:", JSON.stringify(response, null, 2));
