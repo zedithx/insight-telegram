@@ -4,6 +4,7 @@ async function handleCallbackQuery(chatId, callbackData, url, callbackQueryId) {
   switch (callbackData) {
     case "events_0":
       await axios.post(`${url}/sendMessage`, {
+        //TODO - dynamic scheduling of reminder based on event tag
         chat_id: chatId,
         text: "You selected Option 1!",
       });

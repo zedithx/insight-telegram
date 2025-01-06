@@ -108,6 +108,7 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
           text: "⌛Generating a personalised digital pass for you. Your pass will be ready in a moment! Please wait patiently...⚡️",
           parse_mode: "HTML" // Enables bold and clean formatting
         });
+      //  TODO - generate image pass
       user.state = END_FLOW;
       break;
 
