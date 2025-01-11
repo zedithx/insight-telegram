@@ -204,6 +204,7 @@ async function createEventPass({
     { input: taglineTextImage, top: 1380, left: 0 },
     { input: qrImgBuffer, top: qrY, left: qrX },
   ]);
+  const eventPassBuffer = await eventPass.toBuffer();
 
   // Define output path
   const outputDir = path.join(__dirname, "FinalPass");
@@ -214,22 +215,27 @@ async function createEventPass({
 
   // Save event pass
   await eventPass.toFile(outputPath);
-  //console.log(`Event pass saved to ${outputPath}`);
-
+  console.log(`Event pass saved to ${outputPath}`);
+  // return eventPassBuffer;
   return outputPath;
 }
 
+// Export the createEventPass function
+module.exports = {
+  createEventPass,
+};
+
 // Main function to run the script
-(async () => {
-  const pillar = "ASD"; // Replace with actual input
-  const chatID = "1234"; // Replace with actual input
-  const outputPath = await createEventPass(
-    pillar,
-    chatID,
-    "Alex Tan",
-    false,
-    "Male",
-    "computer scientist"
-  );
-  console.log(outputPath);
-})();
+// (async () => {
+//   const pillar = "ASD"; // Replace with actual input
+//   const chatID = "1234"; // Replace with actual input
+//   const outputPath = await createEventPass({
+//     pillar: pillar,
+//     chatID: chatID,
+//     name: "Alex Tan",
+//     customAvatar: false,
+//     avatarType: "Male",
+//     personalInterest: "computer scientist",
+//   });
+//   console.log(outputPath);
+// })();

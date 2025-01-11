@@ -2,4 +2,4 @@ const config = {
   isPreRegistered: false,
 };
 
-export default config;
+module.exports = config;

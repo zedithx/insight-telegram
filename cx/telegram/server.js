@@ -1,4 +1,4 @@
-// IMPORTS
+require("dotenv").config();
 const structProtoToJson =
   require("../../botlib/proto_to_json.js").structProtoToJson;
 const express = require("express");
@@ -19,11 +19,17 @@ admin.initializeApp({
 // Initialize Firestore
 const db = admin.firestore();
 
-// Paste credentials for deployment below this line
-
+// Load environment variables
+const projectId = process.env.PROJECT_ID;
+const locationId = process.env.LOCATION_ID;
+const agentId = process.env.AGENT_ID;
+const languageCode = process.env.LANGUAGE_CODE;
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const SERVER_URL = process.env.SERVER_URL;
+const API_KEY = process.env.API_KEY;
 
 // CONSTANTS
-const DATE = "24 Feb"; // Change date here
+const DATE = process.env.DATE; // Change date here
 const API_URL = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
 const URI = `/webhook/${TELEGRAM_TOKEN}`;
 const WEBHOOK = SERVER_URL + URI;
@@ -32,7 +38,7 @@ const app = express();
 app.use(bodyParser.json());
 
 // Imports the Google Cloud Some API library
-const {SessionsClient} = require('@google-cloud/dialogflow-cx');
+const { SessionsClient } = require("@google-cloud/dialogflow-cx");
 
 // Import from other files
 const { handleRegistration } = require("./flows/registration");
@@ -239,6 +245,14 @@ app.post(URI, async (req, res) => {
             },
           });
           userStates[chatId].plan = true;
+        } else if (messageText === "/delete") {
+          await axios.post(`${API_URL}/sendMessage`, {
+            chat_id: chatId,
+            text: "🎉 <b>Deleting registered account...</b>",
+            parse_mode: "HTML", // Enables bold and clean formatting
+          });
+
+          delete userStates[chatId]; // Reset state
         } else if (userStates[chatId]?.plan) {
           // await handlePlanning();
         } else {
@@ -273,6 +287,7 @@ app.post(URI, async (req, res) => {
 });
 
 const listener = app.listen(process.env.PORT, async () => {
+  // console.log(process.env);
   console.log(
     "Your Dialogflow integration server is listening on port " +
       listener.address().port

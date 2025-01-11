@@ -1,7 +1,10 @@
 // Function to handle registration flow
-import config from "../config";
-import { createEventPass } from "../comfyUI/generate_event_pass";
+const config = require("../config");
+const { createEventPass } = require("../comfyUI/generate_event_pass");
 const axios = require("axios");
+const fs = require("fs");
+const FormData = require("form-data");
+// require("dotenv").config();
 
 const event_states = {
   SELECT_GENDER: "SELECT_GENDER",
@@ -44,7 +47,7 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
             [{ text: "DAI" }],
             [{ text: "EPD" }],
             [{ text: "ESD" }],
-            [{ text: "SUTD" }],
+            [{ text: "No Preferred Pillar" }],
           ],
           one_time_keyboard: true,
           resize_keyboard: true,
@@ -54,7 +57,11 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
       break;
 
     case event_states.SELECT_PILLAR:
-      if (!["CSD", "ASD", "ESD", "EPD", "DAI", "SUTD"].includes(messageText)) {
+      if (
+        !["CSD", "ASD", "ESD", "EPD", "DAI", "No Preferred Pillar"].includes(
+          messageText
+        )
+      ) {
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
           text: "Please select one of the provided options.",
@@ -62,8 +69,12 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
         });
         return;
       }
-      user.data.pillar = messageText;
 
+      if (messageText == "No Preferred Pillar") {
+        user.data.pillar = "SUTD";
+      } else {
+        user.data.pillar = messageText;
+      }
       // IF DATE IS AFTER 23 FEB OR PREREGISTER == FALSE THEN SKIP THIS STEP CHANGE STATE TO SELECT_INTEREST
       const currentDate = new Date();
       const eventDate = new Date("2025-02-24"); //Open House Date set as 24 Feb 2025
@@ -75,14 +86,34 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
           text: "⌛Generating a personalised digital pass for you. Your pass will be ready in a moment! Please wait patiently...⚡️",
           parse_mode: "HTML", // Enables bold and clean formatting
         });
+        try {
+          const eventPassPath = await createEventPass({
+            pillar: user.data.pillar,
+            chatID: chatId,
+            name: user.data.name,
+            customAvatar: false,
+            avatarType: user.data.gender,
+          });
+          // Create a FormData object to send the image
+          const form = new FormData();
+          form.append("chat_id", chatId);
+          form.append("photo", fs.createReadStream(eventPassPath));
 
-        await createEventPass({
-          pillar: user.data.pillar,
-          chatID: chatId,
-          name: user.data.name,
-          customAvatar: false,
-          avatarType: user.data.gender,
-        });
+          // Send the image to Telegram
+          await axios.post(`${API_URL}/sendPhoto`, form, {
+            headers: form.getHeaders(),
+          });
+
+          fs.unlinkSync(eventPassPath); // Delete the image after sending
+          console.log("Event pass sent successfully");
+        } catch (error) {
+          console.error("Error creating or sending event pass:", error.message);
+          if (error.response) {
+            console.error("Status:", error.response.status);
+            console.error("Data:", error.response.data);
+            console.error("Headers:", JSON.stringify(error.response.headers));
+          }
+        }
         //TODO store data into firebase
         //TODO store data into PGSQL on Digital Ocean
 

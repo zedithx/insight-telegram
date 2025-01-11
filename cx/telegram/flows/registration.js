@@ -5,6 +5,7 @@ const { sleep } = require("../utils/Sleep");
 
 // Standardise event_start and states
 const { EVENT_START, event_states, handleEventPass } = require("./eventpass");
+const admin = require("firebase-admin");
 
 // Define state for end of registration flow
 const reg_states = {
@@ -73,7 +74,6 @@ async function handleRegistration(chatId, messageText, userStates, API_URL) {
         user.state = reg_states.GET_NAME;
         break;
 
-
       case reg_states.GET_NAME: // Step 3: Get Email
         if (messageText.trim().length === 0) {
           await axios.post(`${API_URL}/sendMessage`, {
@@ -138,7 +138,7 @@ async function handleRegistration(chatId, messageText, userStates, API_URL) {
           chat_id: chatId,
           text:
             "✅ <b>Please review your details carefully before submitting.</b>\n\n" +
-            "By clicking ‘Yes,’ you consent to your data being used for event purposes. Be assured that you will not be contacted unless you have expressed your interest. 📢\n\n" +
+            "By clicking 'Yes', you consent to the collection and use of my personal information as captured on the registration process, as well as photographs and other audio-visual information captured during the event, by Singapore University of Technology and Design (SUTD), including the disclosure to SUTD trusted third parties. The personal information collected will be used for the purposes of communicating relevant news about SUTD the event, by Singapore University of Technology and Design invitations to future events. Be assured that you will not be contacted unless you have expressed your interest. 📢\n\n" +
             "<b>Name:</b> " +
             user.data.name +
             "\n" +
@@ -165,7 +165,6 @@ async function handleRegistration(chatId, messageText, userStates, API_URL) {
         user.state = reg_states.CONFIRMATION;
         break;
 
-
       case reg_states.CONFIRMATION: // Step 1: Select gender
         if (messageText.toLowerCase() !== "yes") {
           await axios.post(`${API_URL}/sendMessage`, {
@@ -173,19 +172,29 @@ async function handleRegistration(chatId, messageText, userStates, API_URL) {
             text: "It seems you want to make changes. Please restart with /start.",
             parse_mode: "HTML",
           });
-          delete userStates[chatId];
+          user.state = reg_states.START;
         } else {
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
-            text: "Saving your data in our database. Please wait patiently...",
+            text: "Registering you for SUTD Open House 2025. Please wait patiently...",
             parse_mode: "HTML", // Enables bold and clean formatting
           });
           //TODO - save data
+
+          await admin.firestore().collection("registration").add({
+            name: user.data.name,
+            email: user.data.email,
+            phone: user.data.phone,
+            groupType: user.data.groupType,
+            school: user.data.school,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
           await sleep(4);
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
             text:
-              "Your data has been saved in our database. Now, we can proceed to creating your " +
+              "You have been registered successfully. Now, we can proceed to creating your " +
               "very own event pass to be used in the Open House. \n\n" +
               "To begin, what gender are you?",
             parse_mode: "HTML",
