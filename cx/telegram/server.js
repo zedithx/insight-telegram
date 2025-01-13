@@ -220,7 +220,7 @@ app.post(URI, async (req, res) => {
           // Should now allow start handler anymore after registering
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
-            text: "🎉 <b>You have already registered. Please contact @zedithx on telegram for further help </b> 😊",
+            text: "🎉 <b>You have already registered. Please contact @zedithx on telegram for further help </b> 😊", //TODO CHANGE TEXT
             parse_mode: "HTML", // Enables bold and clean formatting
           });
         } else if (messageText === "/events") {
@@ -249,6 +249,7 @@ app.post(URI, async (req, res) => {
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
             text: "🎉 <b>Deleting registered account...</b>",
+            //TODO DO HANDLE DELETE FLOW
             parse_mode: "HTML", // Enables bold and clean formatting
           });
 

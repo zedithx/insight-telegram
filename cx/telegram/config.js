@@ -1,5 +1,5 @@
 const config = {
-  isPreRegistered: false,
+  isPreRegistered: true,
 };
 
 module.exports = config;

@@ -1,3 +1,4 @@
+require("dotenv").config();
 const axios = require("axios");
 
 // Function to handle registration flow
@@ -202,7 +203,7 @@ async function handleRegistration(chatId, messageText, userStates, API_URL) {
               keyboard: [
                 [{ text: "Male" }],
                 [{ text: "Female" }],
-                [{ text: "Other" }],
+                // [{ text: "Other" }],
               ],
               one_time_keyboard: true, // The keyboard disappears after selection
               resize_keyboard: true, // Resizes the keyboard for a better UI
