@@ -41,8 +41,9 @@ app.use(bodyParser.json());
 const { SessionsClient } = require("@google-cloud/dialogflow-cx");
 
 // Import from other files
-const { handleRegistration } = require("./flows/registration");
-const { END_FLOW } = require("./flows/eventpass");
+const {handleRegistration} = require("./flows/registration");
+const {handleDelete} = require("./flows/delete");
+const {END_FLOW} = require("./flows/eventpass");
 
 /**
  * Example for regional endpoint:
@@ -210,7 +211,11 @@ app.post(URI, async (req, res) => {
             text: "🎉 <b>Please register first using /start! </b> 😊",
             parse_mode: "HTML", // Enables bold and clean formatting
           });
-        } else {
+        }
+        else if (messageText === '/delete' || userStates[chatId]?.delete) {
+          await handleDelete(chatId, messageText, userStates, API_URL);
+        }
+        else {
           // Continue the registration flow
           await handleRegistration(chatId, messageText, userStates, API_URL);
         }
@@ -220,8 +225,9 @@ app.post(URI, async (req, res) => {
           // Should now allow start handler anymore after registering
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
-            text: "🎉 <b>You have already registered. Please contact @zedithx on telegram for further help </b> 😊",
-            parse_mode: "HTML", // Enables bold and clean formatting
+            text: "🎉 <b>You have already registered. Please do /delete to remove your registration" +
+                "entry first!</b> 😊",
+            parse_mode: "HTML" // Enables bold and clean formatting
           });
         } else if (messageText === "/events") {
           // Initial message
@@ -245,17 +251,14 @@ app.post(URI, async (req, res) => {
             },
           });
           userStates[chatId].plan = true;
-        } else if (messageText === "/delete") {
-          await axios.post(`${API_URL}/sendMessage`, {
-            chat_id: chatId,
-            text: "🎉 <b>Deleting registered account...</b>",
-            parse_mode: "HTML", // Enables bold and clean formatting
-          });
-
-          delete userStates[chatId]; // Reset state
-        } else if (userStates[chatId]?.plan) {
-          // await handlePlanning();
-        } else {
+        }
+        else if (userStates[chatId]?.plan) {
+            // await handlePlanning();
+        }
+        else if (messageText === '/delete' || userStates[chatId]?.delete) {
+          await handleDelete(chatId, messageText, userStates, API_URL);
+        }
+        else {
           // Proceed with Dialogflow interaction if no keywords
           const response = await detectIntentResponse(req.body);
           // console.info("Dialogflow Response:", JSON.stringify(response, null, 2));
