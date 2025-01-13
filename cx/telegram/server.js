@@ -29,7 +29,6 @@ const SERVER_URL = process.env.SERVER_URL;
 const API_KEY = process.env.API_KEY;
 
 // CONSTANTS
-const DATE = process.env.DATE; // Change date here
 const API_URL = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
 const URI = `/webhook/${TELEGRAM_TOKEN}`;
 const WEBHOOK = SERVER_URL + URI;
@@ -129,7 +128,6 @@ async function detectIntentResponse(telegramRequest) {
 
 const setup = async () => {
   const res = await axios.post(`${API_URL}/setWebhook`, { url: WEBHOOK });
-  console.log(res.data);
 };
 
 const sendTypingAction = async (chatId) => {
@@ -290,7 +288,7 @@ app.post(URI, async (req, res) => {
 });
 
 const listener = app.listen(process.env.PORT, async () => {
-  // console.log(process.env);
+  console.info(process.env.TELEGRAM_TOKEN)
   console.log(
     "Your Dialogflow integration server is listening on port " +
       listener.address().port
