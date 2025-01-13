@@ -1,10 +1,11 @@
-// Function to handle registration flow
+require("dotenv").config();
 const config = require("../config");
-const { createEventPass } = require("../comfyUI/generate_event_pass");
 const axios = require("axios");
 const fs = require("fs");
 const FormData = require("form-data");
-// require("dotenv").config();
+
+// Function to handle registration flow
+const { createEventPass } = require("../comfyUI/generate_event_pass");
 
 const event_states = {
   SELECT_GENDER: "SELECT_GENDER",
@@ -19,7 +20,7 @@ const END_FLOW = event_states.END_EVENT;
 async function handleEventPass(chatId, messageText, user, API_URL) {
   switch (user.state) {
     case event_states.SELECT_GENDER: // Step 2: Get the choice of pillar
-      if (!["Male", "Female", "Other"].includes(messageText)) {
+      if (!["Male", "Female"].includes(messageText)) {
         await axios.post(`${API_URL}/sendMessage`, {
           chat_id: chatId,
           text: "Please select one of the provided options.",
@@ -108,11 +109,6 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
           console.log("Event pass sent successfully");
         } catch (error) {
           console.error("Error creating or sending event pass:", error.message);
-          if (error.response) {
-            console.error("Status:", error.response.status);
-            console.error("Data:", error.response.data);
-            console.error("Headers:", JSON.stringify(error.response.headers));
-          }
         }
         //TODO store data into firebase
         //TODO store data into PGSQL on Digital Ocean
@@ -123,9 +119,9 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
           chat_id: chatId,
           text:
             "Lastly, 🌟 Let's get to know you better! 🌟\n" +
-            "What are your interests?" +
+            "What are your interests?\n" +
             "<b>🤖 Robotics & Mechatronics</b>\n" +
-            "<b>🛠️ Product Design</b>" +
+            "<b>🛠️ Product Design</b>\n" +
             "<b>🏗️ Architecture Design</b>\n" +
             "<b>💻 Software development</b>\n" +
             "<b>📊 Data Science & Analytics</b>\n",
@@ -172,10 +168,33 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
         parse_mode: "HTML", // Enables bold and clean formatting
       });
 
-      //TODO: Generate the pass function
+      try {
+        const eventPassPath = await createEventPass({
+          pillar: user.data.pillar,
+          chatID: chatId,
+          name: user.data.name,
+          customAvatar: true,
+          avatarType: user.data.gender,
+          personalInterest: user.data.interest,
+          SERVER_ADDRESS: process.env.COMFYUI_ADDRESS,
+        });
+        // Create a FormData object to send the image
+        const form = new FormData();
+        form.append("chat_id", chatId);
+        form.append("photo", fs.createReadStream(eventPassPath));
+
+        // Send the image to Telegram
+        await axios.post(`${API_URL}/sendPhoto`, form, {
+          headers: form.getHeaders(),
+        });
+
+        fs.unlinkSync(eventPassPath); // Delete the image after sending
+        console.log("Event pass sent successfully");
+      } catch (error) {
+        console.error("Error creating or sending event pass:", error.message);
+      }
 
       //TODO store data into firebase
-      //  TODO - generate image pass
       user.state = END_FLOW;
       break;
 

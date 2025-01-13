@@ -1,3 +1,4 @@
+require("dotenv").config();
 const axios = require("axios");
 const WebSocket = require("ws");
 const sharp = require("sharp");
@@ -6,7 +7,7 @@ const path = require("path");
 const uuid = require("uuid");
 const { type } = require("os");
 
-const SERVER_ADDRESS = process.env.SERVER_ADDRESS || "127.0.0.1:8188";
+const SERVER_ADDRESS = process.env.COMFYUI_ADDRESS; // || "127.0.0.1:8188";
 const CLIENT_ID = process.env.CLIENT_ID || uuid.v4();
 
 // Function to queue a prompt

@@ -34,7 +34,9 @@ function getTextPrompt(avatarType, personalInterest) {
     "Data Science & Analytics":
       "data analyst working on charts and analytics on a laptop in a meeting room, pc desktop in the background",
   };
-  return `anthropomorphic (character:1.3) close up of upper body, character focus, simple, flat colors, pixel art style, character is a ${avatarType} ${mapPrompt[personalInterest]}, happy`;
+  const text = `anthropomorphic (character:1.3) close up of upper body, character focus, simple, flat colors, pixel art style, character is a ${avatarType} ${mapPrompt[personalInterest]}, happy`;
+  console.log(text);
+  return text;
 }
 
 // Function to create event pass
@@ -58,20 +60,26 @@ async function createEventPass({
   customAvatar = false,
   avatarType,
   personalInterest = null,
-  SERVER_ADDRESS = "127.0.0.1:8188",
+  SERVER_ADDRESS,
 }) {
   const templatePath = getPillarTemplate(pillar);
   let avatarName, tagline, avatarPath;
   if (customAvatar) {
     const textPrompt = getTextPrompt(avatarType, personalInterest);
-    ({ avatarName, tagline, avatarPath } = await getCustomAvatar(
-      chatID,
-      avatarType,
-      personalInterest,
-      textPrompt,
-      SERVER_ADDRESS
-    ));
-    console.log(avatarName, tagline, avatarPath);
+    try {
+      ({ avatarName, tagline, avatarPath } = await getCustomAvatar(
+        chatID,
+        avatarType,
+        personalInterest,
+        textPrompt,
+        SERVER_ADDRESS
+      ));
+    } catch (error) {
+      console.error(`Error reading custom avatar: ${error.message}`);
+      //Use sample flow if custom avatar fails
+      ({ avatarName, tagline, avatarPath } = await getRandomAvatar(avatarType));
+      console.log(avatarName, tagline, avatarPath);
+    }
   } else {
     ({ avatarName, tagline, avatarPath } = await getRandomAvatar(avatarType));
   }
@@ -115,10 +123,10 @@ async function createEventPass({
     .png()
     .toBuffer();
 
-  eventPass = eventPass.composite([
-    { input: template, top: 0, left: 0 },
-    { input: circularAvatar, top: 666, left: 330 },
-  ]);
+  // eventPass = eventPass.composite([
+  //   { input: template, top: 0, left: 0 },
+  //   { input: circularAvatar, top: 666, left: 330 },
+  // ]);
 
   // Add text elements
   const createTextImage = (
@@ -178,20 +186,22 @@ async function createEventPass({
   );
 
   // Composite text images onto event pass
-  eventPass = eventPass.composite([
-    { input: template, top: 0, left: 0 },
-    { input: circularAvatar, top: 666, left: 330 },
-    { input: nameTextImage, top: 1145, left: 0 },
-    { input: avatarNameTextImage, top: 1310, left: 0 },
-    { input: taglineTextImage, top: 1380, left: 0 },
-  ]);
+  // eventPass = eventPass.composite([
+  //   { input: template, top: 0, left: 0 },
+  //   { input: circularAvatar, top: 666, left: 330 },
+  //   { input: nameTextImage, top: 1145, left: 0 },
+  //   { input: avatarNameTextImage, top: 1310, left: 0 },
+  //   { input: taglineTextImage, top: 1380, left: 0 },
+  // ]);
 
   // Generate QR code
-  const qrData = `SUTD_OH2025_${chatID}`;
+  const qrData = `SUTD_OH2025_${chatID}`; //TODO CHECK WHAT SHOULD THE EVENT USERID should be like
   const qrImgBuffer = await QRCode.toBuffer(qrData, {
     width: 400,
     height: 400,
   });
+
+  //TODO ADD composite for QR CODE id number in text below the qrData
 
   // Composite QR code onto event pass
   const qrX = (passWidth - 400) / 2;
