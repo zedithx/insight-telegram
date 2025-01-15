@@ -190,7 +190,7 @@ async function handleRegistration(chatId, messageText, userStates, API_URL) {
           });
           //TODO - save data
 
-          await admin.firestore().collection("registration").add({
+          await admin.firestore().collection("registration").doc(chatId).set({
             name: user.data.name,
             email: user.data.email,
             phone: user.data.phone,

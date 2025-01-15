@@ -290,7 +290,6 @@ app.post(URI, async (req, res) => {
 });
 
 const listener = app.listen(process.env.PORT, async () => {
-  console.info(process.env.TELEGRAM_TOKEN);
   console.log(
     "Your Dialogflow integration server is listening on port " +
       listener.address().port
