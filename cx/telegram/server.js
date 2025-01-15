@@ -237,7 +237,7 @@ app.post(URI, async (req, res) => {
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
             text:
-              "<b>🗺️ Would you like me to help plan your SUTD Open House visit today?</b>" +
+              "<b>🗺️ Would you like me to help plan your SUTD Open House visit today?\n</b>" +
               "1️⃣ <b>⏳ Maybe later</b> 🎓\n" +
               "2️⃣ <b>✅ Yes, help me plan my journey</b> 🧑‍🤝‍🧑",
             parse_mode: "HTML", // Enables bold and clean formatting
@@ -249,6 +249,12 @@ app.post(URI, async (req, res) => {
           });
           userStates[chatId].plan = true;
         } else if (userStates[chatId]?.plan) {
+          //Holder placement before event planner is complete
+          await axios.post(`${API_URL}/sendMessage`, {
+            chat_id: chatId,
+            text: "🎉 <b>Feature still in progress, look out for new updates soon...</b> 😊",
+            parse_mode: "HTML", // Enables bold and clean formatting
+          });
           // await handlePlanning();
         } else if (messageText === "/delete" || userStates[chatId]?.delete) {
           await handleDelete(chatId, messageText, userStates, API_URL);
