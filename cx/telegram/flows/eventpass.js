@@ -168,31 +168,31 @@ async function handleEventPass(chatId, messageText, user, API_URL) {
         parse_mode: "HTML", // Enables bold and clean formatting
       });
 
-      try {
-        const eventPassPath = await createEventPass({
-          pillar: user.data.pillar,
-          chatID: chatId,
-          name: user.data.name,
-          customAvatar: true,
-          avatarType: user.data.gender,
-          personalInterest: user.data.interest,
-          SERVER_ADDRESS: process.env.COMFYUI_ADDRESS,
-        });
-        // Create a FormData object to send the image
-        const form = new FormData();
-        form.append("chat_id", chatId);
-        form.append("photo", fs.createReadStream(eventPassPath));
-
-        // Send the image to Telegram
-        await axios.post(`${API_URL}/sendPhoto`, form, {
-          headers: form.getHeaders(),
-        });
-
-        fs.unlinkSync(eventPassPath); // Delete the image after sending
-        console.log("Event pass sent successfully");
-      } catch (error) {
-        console.error("Error creating or sending event pass:", error.message);
-      }
+      // try {
+      //   const eventPassPath = await createEventPass({
+      //     pillar: user.data.pillar,
+      //     chatID: chatId,
+      //     name: user.data.name,
+      //     customAvatar: true,
+      //     avatarType: user.data.gender,
+      //     personalInterest: user.data.interest,
+      //     SERVER_ADDRESS: process.env.COMFYUI_ADDRESS,
+      //   });
+      //   // Create a FormData object to send the image
+      //   const form = new FormData();
+      //   form.append("chat_id", chatId);
+      //   form.append("photo", fs.createReadStream(eventPassPath));
+      //
+      //   // Send the image to Telegram
+      //   await axios.post(`${API_URL}/sendPhoto`, form, {
+      //     headers: form.getHeaders(),
+      //   });
+      //
+      //   fs.unlinkSync(eventPassPath); // Delete the image after sending
+      //   console.log("Event pass sent successfully");
+      // } catch (error) {
+      //   console.error("Error creating or sending event pass:", error.message);
+      // }
 
       //TODO store data into firebase
       user.state = END_FLOW;

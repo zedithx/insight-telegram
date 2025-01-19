@@ -6,18 +6,7 @@ const axios = require("axios");
 const bodyParser = require("body-parser");
 const FormData = require("form-data");
 const fs = require("fs");
-const admin = require("firebase-admin");
-// Path to your service account key JSON file
-const serviceAccount = require("./firestore-key.json");
 const handleCallbackQuery = require("./utils/HandleCallbackQuery.js");
-
-// Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-// Initialize Firestore
-const db = admin.firestore();
 
 // Load environment variables
 const projectId = process.env.PROJECT_ID;
@@ -42,7 +31,10 @@ const { SessionsClient } = require("@google-cloud/dialogflow-cx");
 // Import from other files
 const { handleRegistration } = require("./flows/registration");
 const { handleDelete } = require("./flows/delete");
+const { handlePlanning} = require("./flows/planning");
 const { END_FLOW } = require("./flows/eventpass");
+const { PLANNING_START } = require("./flows/planning");
+const {sleep} = require("./utils/Sleep");
 
 /**
  * Example for regional endpoint:
@@ -196,7 +188,8 @@ app.post(URI, async (req, res) => {
     const callbackQueryId = callbackQuery.id;
     const callbackData = callbackQuery.data;
     await handleCallbackQuery(chatId, callbackData, API_URL, callbackQueryId);
-  } else {
+  }
+  else {
     try {
       const chatId = req.body.message.chat.id;
       const messageText = req.body.message.text;
@@ -209,9 +202,16 @@ app.post(URI, async (req, res) => {
             text: "🎉 <b>Please register first using /start! </b> 😊",
             parse_mode: "HTML", // Enables bold and clean formatting
           });
-        } else if (messageText === "/delete" || userStates[chatId]?.delete) {
+        }
+        else if (messageText === "/delete" || userStates[chatId]?.delete) {
           await handleDelete(chatId, messageText, userStates, API_URL);
-        } else {
+        }
+        // Account for planning state change
+        else if (userStates[chatId]?.planning) {
+          console.log("Planning path")
+          await handlePlanning(chatId, messageText, userStates, API_URL);
+        }
+        else {
           // Continue the registration flow
           await handleRegistration(chatId, messageText, userStates, API_URL);
         }
@@ -234,6 +234,7 @@ app.post(URI, async (req, res) => {
             parse_mode: "HTML", // Enables bold and clean formatting
           });
           await showEvents(chatId);
+          await sleep(3000)
           await axios.post(`${API_URL}/sendMessage`, {
             chat_id: chatId,
             text:
@@ -247,18 +248,13 @@ app.post(URI, async (req, res) => {
               resize_keyboard: true,
             },
           });
-          userStates[chatId].plan = true;
-        } else if (userStates[chatId]?.plan) {
-          //Holder placement before event planner is complete
-          await axios.post(`${API_URL}/sendMessage`, {
-            chat_id: chatId,
-            text: "🎉 <b>Feature still in progress, look out for new updates soon...</b> 😊",
-            parse_mode: "HTML", // Enables bold and clean formatting
-          });
-          // await handlePlanning();
-        } else if (messageText === "/delete" || userStates[chatId]?.delete) {
+          userStates[chatId].state = PLANNING_START;
+          userStates[chatId].planning = true;
+        }
+        else if (messageText === "/delete" || userStates[chatId]?.delete) {
           await handleDelete(chatId, messageText, userStates, API_URL);
-        } else {
+        }
+        else {
           // Proceed with Dialogflow interaction if no keywords
           const response = await detectIntentResponse(req.body);
           // console.info("Dialogflow Response:", JSON.stringify(response, null, 2));
