@@ -6,7 +6,6 @@ const axios = require("axios");
 const bodyParser = require("body-parser");
 const FormData = require("form-data");
 const fs = require("fs");
-const handleCallbackQuery = require("./utils/HandleCallbackQuery.js");
 
 // Load environment variables
 const projectId = process.env.PROJECT_ID;
@@ -182,14 +181,6 @@ async function showEvents(chatId) {
 }
 
 app.post(URI, async (req, res) => {
-  if (req.body.callback_query) {
-    const callbackQuery = req.body.callback_query;
-    const chatId = callbackQuery.message.chat.id;
-    const callbackQueryId = callbackQuery.id;
-    const callbackData = callbackQuery.data;
-    await handleCallbackQuery(chatId, callbackData, API_URL, callbackQueryId);
-  }
-  else {
     try {
       const chatId = req.body.message.chat.id;
       const messageText = req.body.message.text;
@@ -239,11 +230,11 @@ app.post(URI, async (req, res) => {
             chat_id: chatId,
             text:
               "<b>🗺️ Would you like me to help plan your SUTD Open House visit today?\n</b>" +
-              "1️⃣ <b>⏳ Maybe later</b> 🎓\n" +
-              "2️⃣ <b>✅ Yes, help me plan my journey</b> 🧑‍🤝‍🧑",
+              "1️⃣ <b>✅ Yes, help me plan my journey</b> 🧑‍🤝‍🧑\n" +
+              "2️⃣ <b>⏳ Maybe later</b> 🎓",
             parse_mode: "HTML", // Enables bold and clean formatting
             reply_markup: {
-              keyboard: [[{ text: "Later" }], [{ text: "Yes" }]],
+              keyboard: [[{ text: "Yes" }], [{ text: "Later" }]],
               one_time_keyboard: true,
               resize_keyboard: true,
             },
@@ -282,7 +273,6 @@ app.post(URI, async (req, res) => {
       console.error("Error handling webhook:", error.message);
     }
     res.send();
-  }
 });
 
 const listener = app.listen(process.env.PORT, async () => {
